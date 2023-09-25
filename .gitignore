@@ -1,0 +1,7 @@
+# ignore build directory and executables
+build/*
+*.so
+*.o
+
+# ignore mac files
+*.DS_Store
