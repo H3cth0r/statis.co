@@ -5,97 +5,35 @@
 #include <stdio.h>
 
 
-PyObject *add(PyObject *self, PyObject *args){
-  double x;
-  double y;
-  PyArg_ParseTuple(args, "dd", &x, &y);
-  return PyFloat_FromDouble(x + y);
-}
-static PyObject *sum(PyObject *self, PyObject *args){
-  PyArrayObject *arr;
-  PyArg_ParseTuple(args, "O", &arr);
-  if(PyErr_Occurred()){
-    return NULL;
+int extractDoubleArray(PyObject *args, double **data, int64_t *size){
+  PyArrayObject *arrData;
+  if(!PyArg_ParseTuple(args, "O", &arrData)){
+    return 0;
   }
-  // if(!PyArray_Check(arr) || PyArray_TYPE(arr) != NPY_DOUBLE || !PyArray_IS_C_CONTIGUOUS(arr)){
-  //   PyErr_SetString(PyExc_TypeError, "Argument must be a numpy C-contiguous array of type double");
-  //   return NULL;
-  // }
-  if(!PyArray_Check(arr)){
-    PyErr_SetString(PyExc_TypeError, "Argument must be a numpy C-contiguous array of type double");
-    return NULL;
-  }
-  
-  // double *data = PyArray_DATA(arr);
-  // int64_t size = PyArray_SIZE(arr);
-  int64_t size = PyArray_SIZE(arr);
-  double *data;
-  npy_intp dims[] = {[0] = size};
-  PyArray_AsCArray((PyObject **)&arr, &data, dims, 1, PyArray_DescrFromType(NPY_DOUBLE));
-  if(PyErr_Occurred()){
-    return NULL;
+  if(!PyArray_Check(arrData) || PyArray_TYPE(arrData) != NPY_DOUBLE || !PyArray_ISCARRAY(arrData)) {
+    PyErr_SetString(PyExc_TypeError, "Argument must be a numpy C-contiguous array of type double.");
+    return 0;
   }
 
-  double total = 0;
-  for(int i = 0; i < size; ++i){
-    total += data[i];
-  }
-  return PyFloat_FromDouble(total);
+  *size = PyArray_SIZE(arrData);
+  *data = (double *)PyArray_DATA(arrData);
+
+  return 1;
 }
 
-// ==========================================================
-// ==========================================================
-// ==========================================================
-static PyObject *double_array(PyObject *self, PyObject *args){
-  PyArrayObject *arr;
-  PyArg_ParseTuple(args, "O", &arr);
-  if(PyErr_Occurred()){
-    return NULL;
-  }
 
-  if(!PyArray_Check(arr)){
-    PyErr_SetString(PyExc_TypeError, "Argument must be a numpy C-contiguous array of type double");
-    return NULL;
-  }
-
-  int64_t size = PyArray_SIZE(arr);
-  double *data;
-  npy_intp dims[] = {[0] = size};
-  PyArray_AsCArray((PyObject **)&arr, &data, dims, 1, PyArray_DescrFromType(NPY_DOUBLE));
-  if(PyErr_Occurred()){
-    return NULL;
-  }
-
-  PyObject *result = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-  double *result_data = PyArray_DATA((PyArrayObject *)result);
-  for(int i = 0; i < size; ++i){
-    result_data[i] = 2 * data[i];
-  }
-  return result;
-}
-// ==========================================================
 static PyObject *closingReturns(PyObject *self, PyObject *args) {
-  PyArrayObject *adjCloseData;
-  PyArg_ParseTuple(args, "O", &adjCloseData);
-  if(PyErr_Occurred()){
-    return NULL;
-  }
-
-  if(!PyArray_Check(adjCloseData)){
-    PyErr_SetString(PyExc_TypeError, "Argument must be a numpy C-contiguous array of type double");
-    return NULL;
-  }
-
-  int64_t size = PyArray_SIZE(adjCloseData);
   double *data;
-  npy_intp dims[] = {[0] = size};
-  PyArray_AsCArray((PyObject **)&adjCloseData, &data, dims, 1, PyArray_DescrFromType(NPY_DOUBLE));
-  if(PyErr_Occurred()){
+  int64_t size;
+
+  if(!extractDoubleArray(args, &data, &size) || PyErr_Occurred()){
     return NULL;
   }
 
+  npy_intp dims[] = {[0] = size};
   PyObject *result = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
   double *result_data = PyArray_DATA((PyArrayObject *)result);
+
   if(size > 1000){
     #pragma omp parallel for
     for(npy_intp i = 0; i < size - 1; i++){
@@ -110,14 +48,33 @@ static PyObject *closingReturns(PyObject *self, PyObject *args) {
   result_data[size - 1] = 0;
 
   return result;
+}
 
+static PyObject *averageReturns(PyObject *self, PyObject *args){
+  int64_t size;
+  double *data;
+  if(!extractDoubleArray(args, &data, &size) || PyErr_Occurred()){
+    return NULL;
+  }
+  
+  double addition = 0;
+  if(size > 1000) {
+    #pragma omp parallel for 
+    for(npy_intp i = 0; i < size; i++) {
+      addition += data[i];
+    }
+  } else {
+    for(npy_intp i = 0; i < size; i++) {
+      addition += data[i];
+    }
+  }
+
+  return PyFloat_FromDouble(addition / size);
 }
 
 static PyMethodDef methods[] = {
-  {"add", add, METH_VARARGS, "Adds to numbers together"},
-  {"sum", sum, METH_VARARGS, "Calculate sum of numpy array"},
-  {"double_array", double_array, METH_VARARGS, "Double elements in numpy array"},
   {"closingReturns", closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
+  {"averageReturns", averageReturns, METH_VARARGS, "Computes the average of returns col."},
   {NULL, NULL, 0, NULL}
 };
 
