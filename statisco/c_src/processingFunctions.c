@@ -4,7 +4,6 @@
 #include <omp.h>
 #include <stdio.h>
 
-
 int extractDoubleArray(PyObject *args, double **data, int64_t *size){
   PyArrayObject *arrData;
   if(!PyArg_ParseTuple(args, "O", &arrData)){
@@ -21,8 +20,7 @@ int extractDoubleArray(PyObject *args, double **data, int64_t *size){
   return 1;
 }
 
-
-static PyObject *closingReturns(PyObject *self, PyObject *args) {
+PyObject *closingReturns(PyObject *self, PyObject *args) {
   double *data;
   int64_t size;
 
@@ -50,7 +48,7 @@ static PyObject *closingReturns(PyObject *self, PyObject *args) {
   return result;
 }
 
-static PyObject *averageReturns(PyObject *self, PyObject *args){
+PyObject *averageReturns(PyObject *self, PyObject *args){
   int64_t size;
   double *data;
   if(!extractDoubleArray(args, &data, &size) || PyErr_Occurred()){
@@ -59,7 +57,7 @@ static PyObject *averageReturns(PyObject *self, PyObject *args){
   
   double addition = 0;
   if(size > 1000) {
-    #pragma omp parallel for 
+    #pragma omp parallel for reduction(+:addition)
     for(npy_intp i = 0; i < size; i++) {
       addition += data[i];
     }
@@ -69,16 +67,57 @@ static PyObject *averageReturns(PyObject *self, PyObject *args){
     }
   }
 
-  return PyFloat_FromDouble(addition / size);
+  return Py_BuildValue("d", addition / size);
 }
 
-static PyMethodDef methods[] = {
-  {"closingReturns", closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
-  {"averageReturns", averageReturns, METH_VARARGS, "Computes the average of returns col."},
+PyObject *varianceReturns (PyObject *self, PyObject *args) {
+  PyArrayObject *returns_t;
+  npy_float64 averageReturns_t;
+
+  if(!PyArg_ParseTuple(args, "O!d", &PyArray_Type, &returns_t, &averageReturns_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected a Numpy arr and a double.");
+    return NULL;
+  }
+  printf("Parsed arguments: returns_t=%p, averageReturns_t=%lf\n", (void*)returns_t, averageReturns_t);
+
+  double *returns         = PyArray_DATA(returns_t);
+  npy_intp size           = PyArray_SIZE(returns_t);
+  
+  double averageDiffSqd = 0.0;
+  double diff;
+  if(size > 1000){
+    #pragma omp parallel for private(diff) reduction(+:averageDiffSqd) 
+    for(npy_intp i = 0; i < size; i++) {
+      if (i >= PyArray_SIZE(returns_t)) {
+          PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+          return NULL;
+      }
+      diff = returns[i] - averageReturns_t;
+      averageDiffSqd += diff * diff;
+    }
+  }else {
+    for(npy_intp i = 0; i < size; i++) {
+      if (i >= PyArray_SIZE(returns_t)) {
+          PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+          return NULL;
+      }
+      diff = returns[i] - averageReturns_t;
+      averageDiffSqd += diff * diff;
+    }
+  }
+  averageDiffSqd /= size;
+  return Py_BuildValue("d", averageDiffSqd);
+}
+
+
+PyMethodDef methods[] = {
+  {"closingReturns", (PyCFunction)closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
+  {"averageReturns", (PyCFunction)averageReturns, METH_VARARGS, "Computes the average of returns col."},
+  {"varianceReturns", (PyCFunction)varianceReturns, METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
   {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef processingFunctions = {
+PyModuleDef processingFunctions = {
   PyModuleDef_HEAD_INIT,
   "processingFunctions",
   "This is the stocks operations module",

@@ -14,7 +14,7 @@ def main():
                           ["processingFunctions.c"],
                           include_dirs=[np.get_include(), "/opt/homebrew/opt/libomp/include"],
                 )
-            ]
+            ],
     )
     shutil.move('processingFunctions.cpython-39-darwin.so', os.path.join('..', 'processingFunctions.cpython-39-darwin.so'))
 
