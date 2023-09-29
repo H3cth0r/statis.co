@@ -2,8 +2,26 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <omp.h>
+#include <math.h>
 #include <stdio.h>
 
+
+double calculateMean(double* data, int size){
+  double sum = 0.0; 
+  #pragma omp parallel for reduction(+:sum)
+  for(npy_intp i = 0; i  < size; i++) {
+    sum += data[i];
+  }
+  return sum / size;
+}
+
+/*
+ * @brief   extracts the the array from the args
+ *
+ * @param   args    The arguments from python.
+ * @param   data    double pointer.
+ * @param   size    pointer to the size of the array.
+ * */
 int extractDoubleArray(PyObject *args, double **data, int64_t *size){
   PyArrayObject *arrData;
   if(!PyArg_ParseTuple(args, "O", &arrData)){
@@ -20,6 +38,11 @@ int extractDoubleArray(PyObject *args, double **data, int64_t *size){
   return 1;
 }
 
+/*
+ * @brief     calculates the 'closing returns' column.
+ *
+ * @params    gets the 'Adj column' as numpy array input.
+ * */
 PyObject *closingReturns(PyObject *self, PyObject *args) {
   double *data;
   int64_t size;
@@ -48,6 +71,12 @@ PyObject *closingReturns(PyObject *self, PyObject *args) {
   return result;
 }
 
+/*
+ * @brief   method for calculating average of the returns columns.
+ *
+ * @params  gets numpy array of 'returns' columns.
+ *
+ * */
 PyObject *averageReturns(PyObject *self, PyObject *args){
   int64_t size;
   double *data;
@@ -55,21 +84,30 @@ PyObject *averageReturns(PyObject *self, PyObject *args){
     return NULL;
   }
   
-  double addition = 0;
-  if(size > 1000) {
-    #pragma omp parallel for reduction(+:addition)
-    for(npy_intp i = 0; i < size; i++) {
-      addition += data[i];
-    }
-  } else {
-    for(npy_intp i = 0; i < size; i++) {
-      addition += data[i];
-    }
-  }
+  // double addition = 0;
+  // if(size > 1000) {
+  //   #pragma omp parallel for reduction(+:addition)
+  //   for(npy_intp i = 0; i < size; i++) {
+  //     addition += data[i];
+  //   }
+  // } else {
+  //   for(npy_intp i = 0; i < size; i++) {
+  //     addition += data[i];
+  //   }
+  // }
 
-  return Py_BuildValue("d", addition / size);
+  // return Py_BuildValue("d", addition / size);
+  
+  return Py_BuildValue("d", calculateMean(data, size));
 }
 
+
+/*
+ * @brief   calculates the variance returns of the returns columns.
+ *
+ * @param   returns_t         The returns column.
+ * @param   averageReturns_t  The averare returns.
+ * */
 PyObject *varianceReturns (PyObject *self, PyObject *args) {
   PyArrayObject *returns_t;
   npy_float64 averageReturns_t;
@@ -78,7 +116,6 @@ PyObject *varianceReturns (PyObject *self, PyObject *args) {
     PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected a Numpy arr and a double.");
     return NULL;
   }
-  printf("Parsed arguments: returns_t=%p, averageReturns_t=%lf\n", (void*)returns_t, averageReturns_t);
 
   double *returns         = PyArray_DATA(returns_t);
   npy_intp size           = PyArray_SIZE(returns_t);
@@ -109,11 +146,41 @@ PyObject *varianceReturns (PyObject *self, PyObject *args) {
   return Py_BuildValue("d", averageDiffSqd);
 }
 
+PyObject *stdDeviation (PyObject *self, PyObject *args) {
+  PyArrayObject *returns_t;
+  if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &returns_t) || PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected a Numpy arr."); 
+    return NULL;
+  }
+  
+  double *returns   = PyArray_DATA(returns_t);
+  npy_intp size     = PyArray_SIZE(returns_t);
+
+  double mean = calculateMean(returns, size);
+  double diff;
+  double sum_squared_diff = 0.0;
+  if(size > 1000) {
+    #pragma omp parallel for private(diff) reduction(+:sum_squared_diff)
+    for (npy_intp i = 0; i < size; i++) {
+      diff = returns[i] - mean;
+      sum_squared_diff += diff * diff;
+    }
+    
+  } else {
+    for (npy_intp i = 0; i < size; i++) {
+      diff = returns[i] - mean;
+      sum_squared_diff += diff * diff;
+    }
+  }
+
+  return Py_BuildValue("d", sqrt(sum_squared_diff / size));
+}
 
 PyMethodDef methods[] = {
-  {"closingReturns", (PyCFunction)closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
-  {"averageReturns", (PyCFunction)averageReturns, METH_VARARGS, "Computes the average of returns col."},
+  {"closingReturns",  (PyCFunction)closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
+  {"averageReturns",  (PyCFunction)averageReturns, METH_VARARGS, "Computes the average of returns col."},
   {"varianceReturns", (PyCFunction)varianceReturns, METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
+  {"stdDeviation",    (PyCFunction)stdDeviation, METH_VARARGS, "Computes the standard deviation of the returns column."},
   {NULL, NULL, 0, NULL}
 };
 

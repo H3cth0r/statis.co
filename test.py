@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation
 import statisco.processingFunctions as stco
 
 def closingReturns_NP(adjsc):
@@ -167,6 +167,56 @@ def test_varianceReturns_2():
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
 
+def test_stdDeviation_1():
+    stock_data = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    adjClose = stock_data["Adj Close"].to_numpy()
+
+    returns = closingReturns(adjClose)
+
+    print(f"len: {len(returns)}")
+
+    start_time = time.time()
+    stdDev = stdDeviation(returns)
+    end_time = time.time()
+    ctimes = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time = time.time()
+    std_np = np.std(returns) 
+    end_time = time.time()
+    nptimes = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns.shape}")
+    print(stdDev)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+
+def test_stdDeviation_2():
+    stock_data = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    adjClose = np.random.uniform(stock_data["Adj Close"].min(), stock_data["Adj Close"].max(), size=(10000,))
+
+    returns = closingReturns(adjClose)
+
+    print(f"len: {len(returns)}")
+
+    start_time = time.time()
+    stdDev = stdDeviation(returns)
+    end_time = time.time()
+    ctimes = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time = time.time()
+    std_np = np.std(returns) 
+    end_time = time.time()
+    nptimes = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns.shape}")
+    print(stdDev)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+
 if __name__ == "__main__":
     print("TEST")
     test_closingReturns_1()
@@ -180,6 +230,10 @@ if __name__ == "__main__":
     test_varianceReturns_1()
     print("="*60)
     test_varianceReturns_2()
+    print("="*60)
+    test_stdDeviation_1()
+    print("="*60)
+    test_stdDeviation_2()
 
 
 
