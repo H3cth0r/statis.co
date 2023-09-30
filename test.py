@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns
 import statisco.processingFunctions as stco
 
 def closingReturns_NP(adjsc):
@@ -15,6 +15,9 @@ def averageReturns_NP(returns):
 def varianceReturns_NP(returns_t, averageReturns_t):
     diff_sqd = (returns_t - averageReturns_t) ** 2
     return np.mean(diff_sqd)
+def covarianceReturns_NP(x, y):
+    xy = x*y
+    return np.mean(xy) - (np.mean(x) * np.mean(y))
 def test_closingReturns_1():
     stock_data = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
     print(stock_data.head())
@@ -217,6 +220,34 @@ def test_stdDeviation_2():
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
 
+def test_covarianceReturns_1():
+    nvda            = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    amd             = yf.download("AMD", start="2022-01-01", end="2022-12-31")
+    adjClose_nvda   = nvda["Adj Close"].to_numpy()
+    adjClose_amd    = amd["Adj Close"].to_numpy()
+
+    returns_nvda    = closingReturns(adjClose_nvda)
+    returns_amd     = closingReturns(adjClose_amd)
+
+    print(f"len: {len(returns_nvda)}")
+
+    start_time          = time.time()
+    covr                = covarianceReturns(returns_nvda, returns_amd)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time = time.time()
+    std_np = covarianceReturns_NP(returns_nvda, returns_amd)
+    end_time = time.time()
+    nptimes = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns_nvda.shape}")
+    print(covr)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+
 if __name__ == "__main__":
     print("TEST")
     test_closingReturns_1()
@@ -234,6 +265,8 @@ if __name__ == "__main__":
     test_stdDeviation_1()
     print("="*60)
     test_stdDeviation_2()
+    print("="*60)
+    test_covarianceReturns_1()
 
 
 

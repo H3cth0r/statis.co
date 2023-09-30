@@ -146,6 +146,9 @@ PyObject *varianceReturns (PyObject *self, PyObject *args) {
   return Py_BuildValue("d", averageDiffSqd);
 }
 
+/*
+ * @brief     Calculates the standard deviation of a numerical column.
+ * */
 PyObject *stdDeviation (PyObject *self, PyObject *args) {
   PyArrayObject *returns_t;
   if (!PyArg_ParseTuple(args, "O!", &PyArray_Type, &returns_t) || PyErr_Occurred()) {
@@ -176,11 +179,57 @@ PyObject *stdDeviation (PyObject *self, PyObject *args) {
   return Py_BuildValue("d", sqrt(sum_squared_diff / size));
 }
 
+/*
+ *
+ * */
+PyObject *covarianceReturns(PyObject *self, PyObject *args) {
+  PyArrayObject *returns_one_t;
+  PyArrayObject *returns_two_t;
+  if(!PyArg_ParseTuple(args, "O!O!", &PyArray_Type, &returns_one_t, &PyArray_Type, &returns_two_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected two numpy arrays.");
+    return NULL;
+  }
+
+  double *returns_one   = PyArray_DATA(returns_one_t);
+  double *returns_two   = PyArray_DATA(returns_two_t);
+  npy_intp size_one     = PyArray_SIZE(returns_one_t);
+  npy_intp size_two     = PyArray_SIZE(returns_two_t);
+
+  if(size_one != size_two) {
+    PyErr_SetString(PyExc_ValueError, "The two numpy arrays must have the same size.");
+  }
+  double mean_returns_one = calculateMean(returns_one, size_one);
+  double mean_returns_two = calculateMean(returns_two, size_two);
+
+  double covariance = 0.0;
+  double diff_one;
+  double diff_two;
+  if(size_one > 1000){
+    #pragma omp parallel for private(diff_one, diff_two) reduction(+:covariance)
+    for (npy_intp i = 0; i < size_one; i++) {
+      diff_one = returns_one[i]  - mean_returns_one;
+      diff_two = returns_two[i]  - mean_returns_two;
+      covariance += diff_one * diff_two;
+    }
+  } else {
+    for (npy_intp i = 0; i < size_one; i++) {
+      diff_one = returns_one[i]  - mean_returns_one;
+      diff_two = returns_two[i]  - mean_returns_two;
+      covariance += diff_one * diff_two;
+    }
+  }
+  
+  covariance /= (size_one - 1);
+  return Py_BuildValue("d", covariance);
+
+}
+
 PyMethodDef methods[] = {
-  {"closingReturns",  (PyCFunction)closingReturns, METH_VARARGS, "Computes the return column from dataframe."},
-  {"averageReturns",  (PyCFunction)averageReturns, METH_VARARGS, "Computes the average of returns col."},
-  {"varianceReturns", (PyCFunction)varianceReturns, METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
-  {"stdDeviation",    (PyCFunction)stdDeviation, METH_VARARGS, "Computes the standard deviation of the returns column."},
+  {"closingReturns",    (PyCFunction)closingReturns, METH_VARARGS,    "Computes the return column from dataframe."},
+  {"averageReturns",    (PyCFunction)averageReturns, METH_VARARGS,    "Computes the average of returns col."},
+  {"varianceReturns",   (PyCFunction)varianceReturns, METH_VARARGS,   "Computes the varianceReturns of returns col and average returns."},
+  {"stdDeviation",      (PyCFunction)stdDeviation, METH_VARARGS,      "Computes the standard deviation of the returns column."},
+  {"covarianceReturns", (PyCFunction)covarianceReturns, METH_VARARGS, "Computes the covariance returns."},
   {NULL, NULL, 0, NULL}
 };
 
