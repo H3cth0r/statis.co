@@ -221,15 +221,28 @@ PyObject *covarianceReturns(PyObject *self, PyObject *args) {
   
   covariance /= (size_one - 1);
   return Py_BuildValue("d", covariance);
+}
 
+PyObject *correlationReturns(PyObject *self, PyObject *args) {
+  npy_float64 xyCovar_t;
+  npy_float64 xVar_t;
+  npy_float64 yVar_t;
+  if(!PyArg_ParseTuple(args, "ddd", &xyCovar_t, &xVar_t, &yVar_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+    return NULL;
+  }
+
+  double result = xVar_t / (sqrt(xVar_t) * sqrt(yVar_t));
+  return Py_BuildValue("d", result);
 }
 
 PyMethodDef methods[] = {
-  {"closingReturns",    (PyCFunction)closingReturns, METH_VARARGS,    "Computes the return column from dataframe."},
-  {"averageReturns",    (PyCFunction)averageReturns, METH_VARARGS,    "Computes the average of returns col."},
-  {"varianceReturns",   (PyCFunction)varianceReturns, METH_VARARGS,   "Computes the varianceReturns of returns col and average returns."},
-  {"stdDeviation",      (PyCFunction)stdDeviation, METH_VARARGS,      "Computes the standard deviation of the returns column."},
-  {"covarianceReturns", (PyCFunction)covarianceReturns, METH_VARARGS, "Computes the covariance returns."},
+  {"closingReturns",    (PyCFunction)closingReturns,      METH_VARARGS, "Computes the return column from dataframe."},
+  {"averageReturns",    (PyCFunction)averageReturns,      METH_VARARGS, "Computes the average of returns col."},
+  {"varianceReturns",   (PyCFunction)varianceReturns,     METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
+  {"stdDeviation",      (PyCFunction)stdDeviation,        METH_VARARGS, "Computes the standard deviation of the returns column."},
+  {"covarianceReturns", (PyCFunction)covarianceReturns,   METH_VARARGS, "Computes the covariance returns."},
+  {"correlationReturns", (PyCFunction)correlationReturns, METH_VARARGS, "Computes the correlation between stocks."},
   {NULL, NULL, 0, NULL}
 };
 

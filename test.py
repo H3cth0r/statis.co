@@ -2,8 +2,9 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns
 import statisco.processingFunctions as stco
+import math
 
 def closingReturns_NP(adjsc):
     returnsPerRow = np.zeros_like(adjsc, dtype=float)
@@ -18,6 +19,9 @@ def varianceReturns_NP(returns_t, averageReturns_t):
 def covarianceReturns_NP(x, y):
     xy = x*y
     return np.mean(xy) - (np.mean(x) * np.mean(y))
+def correlationReturns_NP(xyCovar_t, xVar, yVar):
+    return xyCovar_t / (math.sqrt(xVar) * math.sqrt(yVar))
+
 def test_closingReturns_1():
     stock_data = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
     print(stock_data.head())
@@ -247,6 +251,38 @@ def test_covarianceReturns_1():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
+def test_correlationReturns_1():
+    nvda            = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    amd             = yf.download("AMD", start="2022-01-01", end="2022-12-31")
+    adjClose_nvda   = nvda["Adj Close"].to_numpy()
+    adjClose_amd    = amd["Adj Close"].to_numpy()
+
+    returns_nvda    = closingReturns(adjClose_nvda)
+    returns_amd     = closingReturns(adjClose_amd)
+
+    covr            = covarianceReturns(returns_nvda, returns_amd)
+
+    avgReturns_nvda = averageReturns(returns_nvda)
+    avgReturns_amd  = averageReturns(returns_amd)
+
+
+    start_time          = time.time()
+    corr                = correlationReturns(covr, avgReturns_nvda, avgReturns_amd)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    std_np              = correlationReturns_NP(covr, avgReturns_nvda, avgReturns_amd)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns_nvda.shape}")
+    print(corr)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+
 
 if __name__ == "__main__":
     print("TEST")
