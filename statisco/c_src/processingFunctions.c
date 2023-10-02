@@ -232,8 +232,19 @@ PyObject *correlationReturns(PyObject *self, PyObject *args) {
     return NULL;
   }
 
-  double result = xVar_t / (sqrt(xVar_t) * sqrt(yVar_t));
+  double result = xyCovar_t / (sqrt(xVar_t) * sqrt(yVar_t));
   return Py_BuildValue("d", result);
+}
+
+PyObject *compoundInterest(PyObject *self, PyObject *args) {
+  npy_float64 P_t;
+  npy_float64 r_t;
+  npy_float64 t_t;
+  if(!PyArg_ParseTuple(args, "ddd", &P_t, &r_t, &t_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+    return NULL;
+  }
+  return Py_BuildValue("d", P_t * pow((1 + r_t), t_t));
 }
 
 PyMethodDef methods[] = {
@@ -242,7 +253,8 @@ PyMethodDef methods[] = {
   {"varianceReturns",   (PyCFunction)varianceReturns,     METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
   {"stdDeviation",      (PyCFunction)stdDeviation,        METH_VARARGS, "Computes the standard deviation of the returns column."},
   {"covarianceReturns", (PyCFunction)covarianceReturns,   METH_VARARGS, "Computes the covariance returns."},
-  {"correlationReturns", (PyCFunction)correlationReturns, METH_VARARGS, "Computes the correlation between stocks."},
+  {"correlationReturns",(PyCFunction)correlationReturns,  METH_VARARGS, "Computes the correlation between stocks."},
+  {"compoundInterest",  (PyCFunction)compoundInterest,    METH_VARARGS, "Computes the compound interest."},
   {NULL, NULL, 0, NULL}
 };
 

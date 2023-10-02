@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest
 import statisco.processingFunctions as stco
 import math
 
@@ -21,6 +21,9 @@ def covarianceReturns_NP(x, y):
     return np.mean(xy) - (np.mean(x) * np.mean(y))
 def correlationReturns_NP(xyCovar_t, xVar, yVar):
     return xyCovar_t / (math.sqrt(xVar) * math.sqrt(yVar))
+def compoundInterest_NP(P, r, t):
+    return P * (1 + r)**t
+
 
 def test_closingReturns_1():
     stock_data = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
@@ -283,6 +286,22 @@ def test_correlationReturns_1():
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
 
+def test_compoundInterest():
+    start_time          = time.time()
+    corr                = compoundInterest(2, 3, 2)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    std_np              = compoundInterest_NP(2, 3, 2)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+    print(corr)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+    
 
 if __name__ == "__main__":
     print("TEST")
@@ -303,6 +322,11 @@ if __name__ == "__main__":
     test_stdDeviation_2()
     print("="*60)
     test_covarianceReturns_1()
+    print("="*60)
+    test_correlationReturns_1()
+    print("="*60)
+    test_compoundInterest()
+
 
 
 
