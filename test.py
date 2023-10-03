@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime
 import statisco.processingFunctions as stco
 import math
 
@@ -23,6 +23,10 @@ def correlationReturns_NP(xyCovar_t, xVar, yVar):
     return xyCovar_t / (math.sqrt(xVar) * math.sqrt(yVar))
 def compoundInterest_NP(P, r, t):
     return P * (1 + r)**t
+def moneyMadeInAYear_NP(P, r, t):
+    return compoundInterest_NP(P, r, t) * r
+def compoundInterestTime_NP(r):
+    return -np.log(r)/np.log(1 + r)
 
 
 def test_closingReturns_1():
@@ -301,6 +305,13 @@ def test_compoundInterest():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
+
+def test_moneyMadeInAYear():
+    print(f"NP: \t{moneyMadeInAYear_NP(2,3,2)}")
+    print(f"C:  \t{moneyMadeInAYear(2,3,2)}")
+def test_compoundInterestTime():
+    print(f"NP: \t{compoundInterestTime_NP(2)}")
+    print(f"C:  \t{compoundInterestTime(2)}")
     
 
 if __name__ == "__main__":
@@ -326,6 +337,10 @@ if __name__ == "__main__":
     test_correlationReturns_1()
     print("="*60)
     test_compoundInterest()
+    print("="*60)
+    test_moneyMadeInAYear()
+    print("="*60)
+    test_compoundInterestTime()
 
 
 

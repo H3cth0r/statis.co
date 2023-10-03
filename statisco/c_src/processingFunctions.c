@@ -247,14 +247,36 @@ PyObject *compoundInterest(PyObject *self, PyObject *args) {
   return Py_BuildValue("d", P_t * pow((1 + r_t), t_t));
 }
 
+PyObject *moneyMadeInAYear(PyObject *self, PyObject *args){
+  npy_float64 P_t;
+  npy_float64 r_t;
+  npy_float64 t_t;
+  if(!PyArg_ParseTuple(args, "ddd", &P_t, &r_t, &t_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+    return NULL;
+  }
+  return Py_BuildValue("d", r_t * (P_t * pow((1 + r_t), t_t)));
+}
+
+PyObject *compoundInterestTime(PyObject *self, PyObject *args){
+  npy_float64 r_t;
+  if(!PyArg_ParseTuple(args, "d", &r_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+    return NULL;
+  }
+  return Py_BuildValue("d", -log(r_t) / log(1 + r_t));
+}
+
 PyMethodDef methods[] = {
-  {"closingReturns",    (PyCFunction)closingReturns,      METH_VARARGS, "Computes the return column from dataframe."},
-  {"averageReturns",    (PyCFunction)averageReturns,      METH_VARARGS, "Computes the average of returns col."},
-  {"varianceReturns",   (PyCFunction)varianceReturns,     METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
-  {"stdDeviation",      (PyCFunction)stdDeviation,        METH_VARARGS, "Computes the standard deviation of the returns column."},
-  {"covarianceReturns", (PyCFunction)covarianceReturns,   METH_VARARGS, "Computes the covariance returns."},
-  {"correlationReturns",(PyCFunction)correlationReturns,  METH_VARARGS, "Computes the correlation between stocks."},
-  {"compoundInterest",  (PyCFunction)compoundInterest,    METH_VARARGS, "Computes the compound interest."},
+  {"closingReturns",        (PyCFunction)closingReturns,          METH_VARARGS, "Computes the return column from dataframe."},
+  {"averageReturns",        (PyCFunction)averageReturns,          METH_VARARGS, "Computes the average of returns col."},
+  {"varianceReturns",       (PyCFunction)varianceReturns,         METH_VARARGS, "Computes the varianceReturns of returns col and average returns."},
+  {"stdDeviation",          (PyCFunction)stdDeviation,            METH_VARARGS, "Computes the standard deviation of the returns column."},
+  {"covarianceReturns",     (PyCFunction)covarianceReturns,       METH_VARARGS, "Computes the covariance returns."},
+  {"correlationReturns",    (PyCFunction)correlationReturns,      METH_VARARGS, "Computes the correlation between stocks."},
+  {"compoundInterest",      (PyCFunction)compoundInterest,        METH_VARARGS, "Computes the compound interest."},
+  {"moneyMadeInAYear",      (PyCFunction)moneyMadeInAYear,        METH_VARARGS, "Computes the money made in a year."},
+  {"compoundInterestTime",  (PyCFunction)compoundInterestTime,    METH_VARARGS, "Computes the compoung interest per year."},
   {NULL, NULL, 0, NULL}
 };
 
