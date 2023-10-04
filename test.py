@@ -258,11 +258,69 @@ def test_covarianceReturns_1():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
+def test_covarianceReturns_2():
+    nvda            = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    amd             = yf.download("AMD", start="2022-01-01", end="2022-12-31")
+    adjClose_nvda   = np.random.uniform(nvda["Adj Close"].min(), nvda["Adj Close"].max(), size=(20000,))
+    adjClose_amd    = np.random.uniform(amd["Adj Close"].min(), amd["Adj Close"].max(), size=(20000,))
+
+    returns_nvda    = closingReturns(adjClose_nvda)
+    returns_amd     = closingReturns(adjClose_amd)
+
+    print(f"len: {len(returns_nvda)}")
+
+    start_time          = time.time()
+    covr                = covarianceReturns(returns_nvda, returns_amd)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time = time.time()
+    std_np = covarianceReturns_NP(returns_nvda, returns_amd)
+    end_time = time.time()
+    nptimes = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns_nvda.shape}")
+    print(covr)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
 def test_correlationReturns_1():
     nvda            = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
     amd             = yf.download("AMD", start="2022-01-01", end="2022-12-31")
     adjClose_nvda   = nvda["Adj Close"].to_numpy()
     adjClose_amd    = amd["Adj Close"].to_numpy()
+
+    returns_nvda    = closingReturns(adjClose_nvda)
+    returns_amd     = closingReturns(adjClose_amd)
+
+    covr            = covarianceReturns(returns_nvda, returns_amd)
+
+    avgReturns_nvda = averageReturns(returns_nvda)
+    avgReturns_amd  = averageReturns(returns_amd)
+
+
+    start_time          = time.time()
+    corr                = correlationReturns(covr, avgReturns_nvda, avgReturns_amd)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    std_np              = correlationReturns_NP(covr, avgReturns_nvda, avgReturns_amd)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns_nvda.shape}")
+    print(corr)
+    print(std_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+def test_correlationReturns_2():
+    nvda            = yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    amd             = yf.download("AMD", start="2022-01-01", end="2022-12-31")
+    adjClose_nvda   = np.random.uniform(nvda["Adj Close"].min(), nvda["Adj Close"].max(), size=(20000,))
+    adjClose_amd    = np.random.uniform(amd["Adj Close"].min(), amd["Adj Close"].max(), size=(20000,))
 
     returns_nvda    = closingReturns(adjClose_nvda)
     returns_amd     = closingReturns(adjClose_amd)
@@ -334,7 +392,13 @@ if __name__ == "__main__":
     print("="*60)
     test_covarianceReturns_1()
     print("="*60)
+    print("COVARIANCE TEST")
+    test_covarianceReturns_2()
+    print("="*60)
     test_correlationReturns_1()
+    print("="*60)
+    print("CORRELATION TEST")
+    test_correlationReturns_2()
     print("="*60)
     test_compoundInterest()
     print("="*60)
