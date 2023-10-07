@@ -266,6 +266,17 @@ PyObject *compoundInterestTime(PyObject *self, PyObject *args){
   }
   return Py_BuildValue("d", -log(r_t) / log(1 + r_t));
 }
+PyObject *expectedValue(PyObject *self, PyObject *args) {
+  npy_float64 avgLoss_t;
+  npy_float64 avgLP_t;
+  npy_float64 avGain_t;
+  npy_float64 avgGP_t;
+  if(!PyArg_ParseTuple(args, "dddd", &avgLoss_t, &avgLP_t, &avGain_t, &avgGP_t) || PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+    return NULL;
+  }
+  return Py_BuildValue("d", (avgLoss_t*avgLP_t) + (avGain_t*avgGP_t);
+}
 
 PyMethodDef methods[] = {
   {"closingReturns",        (PyCFunction)closingReturns,          METH_VARARGS, "Computes the return column from dataframe."},
@@ -277,6 +288,7 @@ PyMethodDef methods[] = {
   {"compoundInterest",      (PyCFunction)compoundInterest,        METH_VARARGS, "Computes the compound interest."},
   {"moneyMadeInAYear",      (PyCFunction)moneyMadeInAYear,        METH_VARARGS, "Computes the money made in a year."},
   {"compoundInterestTime",  (PyCFunction)compoundInterestTime,    METH_VARARGS, "Computes the compoung interest per year."},
+  {"expectedValue",         (PyCFunction)expectedValue,           METH_VARARGS, "Computes the expected value given averages."},
   {NULL, NULL, 0, NULL}
 };
 
