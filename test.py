@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA
 import statisco.processingFunctions as stco
 import math
 
@@ -27,6 +27,21 @@ def moneyMadeInAYear_NP(P, r, t):
     return compoundInterest_NP(P, r, t) * r
 def compoundInterestTime_NP(r):
     return -np.log(r)/np.log(1 + r)
+def calculateSMA_NP(closings, window_t):
+    result = np.zeros_like(closings)
+    for i in range(window_t - 1, len(closings)):
+        result[i] = np.mean(closings[i - window_t+1 : i +1])
+    return result 
+def cosine_similarity(vector1, vector2):
+    dot_product = np.dot(vector1, vector2)
+    norm_vector1 = np.linalg.norm(vector1)
+    norm_vector2 = np.linalg.norm(vector2)
+    
+    if norm_vector1 == 0 or norm_vector2 == 0:
+        return 0.0  
+    
+    similarity = dot_product / (norm_vector1 * norm_vector2)
+    return similarity
 
 
 def test_closingReturns_1():
@@ -363,13 +378,46 @@ def test_compoundInterest():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
-
 def test_moneyMadeInAYear():
     print(f"NP: \t{moneyMadeInAYear_NP(2,3,2)}")
     print(f"C:  \t{moneyMadeInAYear(2,3,2)}")
 def test_compoundInterestTime():
     print(f"NP: \t{compoundInterestTime_NP(2)}")
     print(f"C:  \t{compoundInterestTime(2)}")
+def test_SMA_1():
+    closings = np.random.uniform(100.0, 150.0, 100)
+    start_time          = time.time()
+    cc  = calculateSMA(closings, 5)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    npy = calculateSMA_NP(closings, 5)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+    print(npy)
+    print(cc)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+    print("similarity: ", cosine_similarity(npy, cc))
+def test_SMA_2():
+    closings = np.random.uniform(100.0, 250.0, 2000)
+    start_time          = time.time()
+    cc  = calculateSMA(closings, 5)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    npy = calculateSMA_NP(closings, 5)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+    print(npy)
+    print(cc)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+    print("similarity: ", cosine_similarity(npy, cc))
     
 
 if __name__ == "__main__":
@@ -405,6 +453,10 @@ if __name__ == "__main__":
     test_moneyMadeInAYear()
     print("="*60)
     test_compoundInterestTime()
+    print("="*60)
+    test_SMA_1()
+    print("="*60)
+    test_SMA_2()
 
 
 

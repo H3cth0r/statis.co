@@ -275,7 +275,47 @@ PyObject *expectedValue(PyObject *self, PyObject *args) {
     PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
     return NULL;
   }
-  return Py_BuildValue("d", (avgLoss_t*avgLP_t) + (avGain_t*avgGP_t);
+  return Py_BuildValue("d", (avgLoss_t*avgLP_t) + (avGain_t*avgGP_t));
+}
+
+PyObject *calculateSMA(PyObject *self, PyObject *args) {
+  PyArrayObject *returns_t;
+  int window_t;
+
+  if(!PyArg_ParseTuple(args, "O!i", &PyArray_Type, &returns_t, &window_t) || PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, "Invalid argument. Expected a numpy array and an int.");
+    return NULL;
+  }
+
+  double *returns         = PyArray_DATA(returns_t);
+  npy_intp size           = PyArray_SIZE(returns_t);
+
+  npy_intp size_array[1] = {size};
+  // PyObject *result = PyArray_Zeros(1, size_array, NPY_DOUBLE, 0);
+  PyObject *result = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+  double sum;
+  if(size > 1000){
+    #pragma omp parallel for reduction(+:sum) 
+    for(int i = window_t-1 ; i < size; i++) {
+      sum = 0;
+      for(int j = i-window_t+1; j <= i; j++) {
+        sum += returns[j];
+      }
+      // result[i-window_t+1] = PyFloat_FromDouble(sum / window_t);
+      PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(sum / window_t));
+    } 
+  }else {
+    for(int i = window_t-1 ; i < size; i++) {
+      sum = 0;
+      for(int j = i-window_t+1; j <= i; j++) {
+        sum += returns[j];
+      }
+      // result[i-window_t+1] = PyFloat_FromDouble(sum / window_t);
+      PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(sum / window_t));
+    } 
+  }
+
+  return result;
 }
 
 PyMethodDef methods[] = {
@@ -289,6 +329,7 @@ PyMethodDef methods[] = {
   {"moneyMadeInAYear",      (PyCFunction)moneyMadeInAYear,        METH_VARARGS, "Computes the money made in a year."},
   {"compoundInterestTime",  (PyCFunction)compoundInterestTime,    METH_VARARGS, "Computes the compoung interest per year."},
   {"expectedValue",         (PyCFunction)expectedValue,           METH_VARARGS, "Computes the expected value given averages."},
+  {"calculateSMA",          (PyCFunction)calculateSMA,            METH_VARARGS, "Computes the simple moving average of a column."},
   {NULL, NULL, 0, NULL}
 };
 
