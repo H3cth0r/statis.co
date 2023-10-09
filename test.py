@@ -32,6 +32,22 @@ def calculateSMA_NP(closings, window_t):
     for i in range(window_t - 1, len(closings)):
         result[i] = np.mean(closings[i - window_t+1 : i +1])
     return result 
+def calculateEMA_NP(returns, SMA, window_t):
+    size = len(returns)
+    result = np.zeros(size, dtype=np.float64)
+    multiplier = 2.0 / (window_t + 1)
+    first = True
+
+    for i in range(window_t - 1, size):
+        if first:
+            result[i] = returns[i] * multiplier + SMA[i] * (1 - multiplier)
+            first = False
+        else:
+            prevValue = result[i - 1]
+            result[i] = returns[i] * multiplier + prevValue * (1 - multiplier)
+
+    return result
+
 def cosine_similarity(vector1, vector2):
     dot_product = np.dot(vector1, vector2)
     norm_vector1 = np.linalg.norm(vector1)
@@ -410,6 +426,24 @@ def test_SMA_2():
 
     start_time          = time.time()
     npy = calculateSMA_NP(closings, 5)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+    print(npy)
+    print(cc)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+    print("similarity: ", cosine_similarity(npy, cc))
+def test_EMA_1():
+    closings            = np.random.uniform(100.0, 150.0, 100)
+    SMA                 = calculateSMA(closings, 5)
+    start_time          = time.time()
+    cc                  = calculateEMA(closings, SMA, 5)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    npy                 = calculateEMA_NP(closings, SMA,5)
     end_time            = time.time()
     nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
     print(npy)

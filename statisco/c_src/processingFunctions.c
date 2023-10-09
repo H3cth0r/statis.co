@@ -4,6 +4,7 @@
 #include <omp.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 
 double calculateMean(double* data, int size){
@@ -301,7 +302,6 @@ PyObject *calculateSMA(PyObject *self, PyObject *args) {
       for(int j = i-window_t+1; j <= i; j++) {
         sum += returns[j];
       }
-      // result[i-window_t+1] = PyFloat_FromDouble(sum / window_t);
       PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(sum / window_t));
     } 
   }else {
@@ -310,11 +310,55 @@ PyObject *calculateSMA(PyObject *self, PyObject *args) {
       for(int j = i-window_t+1; j <= i; j++) {
         sum += returns[j];
       }
-      // result[i-window_t+1] = PyFloat_FromDouble(sum / window_t);
       PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(sum / window_t));
     } 
   }
 
+  return result;
+}
+
+PyObject *calculateEMA(PyObject *self, PyObject *args){
+  PyArrayObject *returns_t;
+  PyArrayObject *SMA_t;
+  int window_t;
+  if(!PyArg_ParseTuple(args, "O!O!i", &PyArray_Type, &returns_t, &PyArray_Type, &SMA_t, &window_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid Argument. Expected a numpy array and a int.");
+    return NULL;
+  }
+  double *returns   = PyArray_DATA(returns_t);
+  npy_intp size     = PyArray_SIZE(returns_t);
+  double *SMA       = PyArray_DATA(SMA_t);
+
+  npy_intp size_array[1]  = {size};
+  PyObject *result  = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+  double multipler  = 2/(window_t+1);
+  double res;
+  npy_intp prevIndex;
+  bool first = 1;
+  if(size > 1000) {
+    #pragma omp parallel for private(prevIndex, first) reduction(+:res)
+    for(npy_intp i = window_t-1; i < size; i++) {
+      if(first){
+        res   = returns[i] * multipler + SMA[i] * (1-multipler);
+        first = 0;
+      }else{
+        prevIndex = i - 1;
+        res   = returns[i] * multipler + *((double *)PyArray_GetPtr((PyArrayObject*)result, &prevIndex)) * (1-multipler);
+      }
+      PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(res));
+    }
+  }else{
+    for(npy_intp i = window_t-1; i < size; i++) {
+      if(first){
+        res   = returns[i] * multipler + SMA[i] * (1-multipler);
+        first = 0;
+      }else{
+        prevIndex = i - 1;
+        res   = returns[i] * multipler + *((double *)PyArray_GetPtr((PyArrayObject*)result, &prevIndex)) * (1-multipler);
+      }
+      PyArray_SETITEM((PyArrayObject *)result, PyArray_GETPTR1((PyArrayObject *)result, i), PyFloat_FromDouble(res));
+    }
+  }
   return result;
 }
 
