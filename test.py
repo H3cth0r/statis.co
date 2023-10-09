@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA, calculateEMA
 import statisco.processingFunctions as stco
 import math
 
@@ -446,8 +446,8 @@ def test_EMA_1():
     npy                 = calculateEMA_NP(closings, SMA,5)
     end_time            = time.time()
     nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
-    print(npy)
     print(cc)
+    print(npy)
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
@@ -491,7 +491,5 @@ if __name__ == "__main__":
     test_SMA_1()
     print("="*60)
     test_SMA_2()
-
-
-
-
+    print("="*60)
+    test_EMA_1()
