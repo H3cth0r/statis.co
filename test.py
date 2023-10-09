@@ -452,6 +452,24 @@ def test_EMA_1():
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
     print("similarity: ", cosine_similarity(npy, cc))
+def test_EMA_2():
+    closings            = np.random.uniform(100.0, 150.0, 10000)
+    SMA                 = calculateSMA(closings, 5)
+    start_time          = time.time()
+    cc                  = calculateEMA(closings, SMA, 5)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time          = time.time()
+    npy                 = calculateEMA_NP(closings, SMA,5)
+    end_time            = time.time()
+    nptimes             = f"Numpy time: \t\t{end_time - start_time :.10f}"
+    print(cc)
+    print(npy)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+    print("similarity: ", cosine_similarity(npy, cc))
     
 
 if __name__ == "__main__":
@@ -493,3 +511,5 @@ if __name__ == "__main__":
     test_SMA_2()
     print("="*60)
     test_EMA_1()
+    print("="*60)
+    test_EMA_2()
