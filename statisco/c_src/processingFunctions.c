@@ -354,6 +354,34 @@ PyObject *calculateEMA(PyObject *self, PyObject *args){
     return result;
 }
 
+PyObject *calculateWMA(PyObject *self, PyObject *args) {
+  PyArrayObject *returns_t;
+  int window_t;
+  if(!PyArg_ParseTuple(args, "0!i", &PyArray_Type, &returns_t, &window_t) || PyErr_Occurred()){
+    PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected a numpy array.");
+    return NULL;
+  }
+
+  npy_intp size     = PyArray_SIZE(returns_t);
+  npy_intp size_array[1] = {size};
+  PyObject *result  = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+
+
+  double sum      = 0;
+  double counter  = 0;
+  for(npy_intp i = window_t-1; i < size; i++){
+    sum = 0;
+    counter = 1;
+    for(npy_intp j = i-window_t; j < i; j++){
+        sum += *(double*)PyArray_GetPtr(returns_t, &j) * (counter/window_t);
+        counter += 1;
+    }
+    ((double *)PyArray_DATA((PyArrayObject*)result))[i] = sum;
+  }
+
+  return result;
+}
+
 
 
 PyMethodDef methods[] = {
@@ -369,6 +397,7 @@ PyMethodDef methods[] = {
   {"expectedValue",         (PyCFunction)expectedValue,           METH_VARARGS, "Computes the expected value given averages."},
   {"calculateSMA",          (PyCFunction)calculateSMA,            METH_VARARGS, "Computes the simple moving average of a column."},
   {"calculateEMA",          (PyCFunction)calculateEMA,            METH_VARARGS, "Computes the exponential moving average."},
+  {"calculateWMA",          (PyCFunction)calculateWMA,            METH_VARARGS, "Computes the exponential moving average."},
   {NULL, NULL, 0, NULL}
 };
 
