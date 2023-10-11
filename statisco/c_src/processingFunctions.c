@@ -382,6 +382,47 @@ PyObject *calculateWMA(PyObject *self, PyObject *args) {
   return result;
 }
 
+PyObject *calculateATR(PyObject *self, PyObject *args) {
+  PyObject *Close_t;
+  PyObject *High_t;
+  PyObject *Low_t;
+  int window_t;
+
+  if(!PyArg_ParseTuple(args, "O!O!O!i", &PyArray_Type, &Close_t, &PyArray_Type, &High_t, &PyArray_Type, &Low_t, &window_t) || PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, "Invalid Arguments. Expected three numpy arrays and an int.");
+    return NULL;
+  }
+
+  npy_intp size           =  PyArray_SIZE(Close_t);
+  npy_intp size_array[1]  = {size};
+  PyObject *trueRange     = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+  PyObject *ATR           = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+
+  for(npy_intp i = 0; i < size; i++){
+    if( i > 0){
+      trueRange[i]  = fmax(
+                          fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)), 
+                          fmax(
+                                fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &i - 1)),
+                                fabs(*(double*)PyArray_GetPtr(Low_t, &i)  - *(double*)PyArray_GetPtr(Close_t, &i - 1))
+                          )
+                      );
+    }else{
+      trueRange[i]    = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
+    }
+  }
+
+  double sum = 0;
+  for(npy_intp i = window_t; i < size; i++){
+    sum = 0;
+    for(npy_intp j = i - size; i < i; j++) {
+      sum += *(double*)PyArray_GetPtr(trueRange, &i);
+    }
+    ((double*)PyArray_DATA(PyArrayObject*)ATR)[i] = sum;
+  }
+  return ATR;
+}
+
 
 
 PyMethodDef methods[] = {
