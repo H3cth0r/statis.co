@@ -439,6 +439,7 @@ PyMethodDef methods[] = {
   {"calculateSMA",          (PyCFunction)calculateSMA,            METH_VARARGS, "Computes the simple moving average of a column."},
   {"calculateEMA",          (PyCFunction)calculateEMA,            METH_VARARGS, "Computes the exponential moving average."},
   {"calculateWMA",          (PyCFunction)calculateWMA,            METH_VARARGS, "Computes the exponential moving average."},
+  {"calculateATR",          (PyCFunction)calculateATR,            METH_VARARGS, "Computes the averege true rate."},
   {NULL, NULL, 0, NULL}
 };
 

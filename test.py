@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA, calculateEMA, calculateWMA
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA, calculateEMA, calculateWMA, calculateATR
 import statisco.processingFunctions as stco
 import math
 
@@ -57,7 +57,20 @@ def calculateWMA_NP(returns, window_t):
             counter += 1
         WMA[i] = sum
     return WMA
+def calculateATR_NP(Close_t, High_t, Low_t, window_t):
+    trueRange   = np.zeros(Close_t.size)
+    ATR         = np.zeros(Close_t.size)
 
+    for i in range(1, Close_t.size):
+        trueRange[i] = max([
+            abs(High_t[i]   - Low_t[i]),
+            abs(High_t[i]   - Close_t[i]),
+            abs(Low_t[i]    - Close_t[i])
+        ]);
+
+    for i in range(window_t + 1, Close_t.size):
+        ATR[i]  = np.mean(trueRange[i - window_t:i])
+    return ATR
 def cosine_similarity(vector1, vector2):
     dot_product = np.dot(vector1, vector2)
     norm_vector1 = np.linalg.norm(vector1)
@@ -504,6 +517,30 @@ def test_WMA_1():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
+def test_ATR_1():
+    # CLose, high low, window_t
+    stock_data          =   yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    High                =   stock_data["High"].to_numpy()
+    Close               =   stock_data["Close"].to_numpy()
+    Low                 =   stock_data["Low"].to_numpy()
+
+    start_time          = time.time()
+    ATR                 = calculateATR(High, Close, Low, 7)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time      = time.time()
+    ATR_np          = calculateATR_NP(High, Close, Low, 7)
+    end_time        = time.time()
+    nptimes         = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns.shape}")
+    print(ATR)
+    print(ATR_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
+
 
 if __name__ == "__main__":
     print("TEST")
