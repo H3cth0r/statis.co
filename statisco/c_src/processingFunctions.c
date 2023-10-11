@@ -383,9 +383,9 @@ PyObject *calculateWMA(PyObject *self, PyObject *args) {
 }
 
 PyObject *calculateATR(PyObject *self, PyObject *args) {
-  PyObject *Close_t;
-  PyObject *High_t;
-  PyObject *Low_t;
+  PyArrayObject *Close_t;
+  PyArrayObject *High_t;
+  PyArrayObject *Low_t;
   int window_t;
 
   if(!PyArg_ParseTuple(args, "O!O!O!i", &PyArray_Type, &Close_t, &PyArray_Type, &High_t, &PyArray_Type, &Low_t, &window_t) || PyErr_Occurred()) {
@@ -400,7 +400,7 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
 
   for(npy_intp i = 0; i < size; i++){
     if( i > 0){
-      trueRange[i]  = fmax(
+      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fmax(
                           fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)), 
                           fmax(
                                 fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &i - 1)),
@@ -408,17 +408,17 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
                           )
                       );
     }else{
-      trueRange[i]    = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
+      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
     }
   }
 
   double sum = 0;
   for(npy_intp i = window_t; i < size; i++){
     sum = 0;
-    for(npy_intp j = i - size; i < i; j++) {
-      sum += *(double*)PyArray_GetPtr(trueRange, &i);
+    for(npy_intp j = i - size; j < i; j++) {
+      sum += *(double*)PyArray_GetPtr((PyArrayObject*)trueRange, &j);
     }
-    ((double*)PyArray_DATA(PyArrayObject*)ATR)[i] = sum;
+    ((double*)PyArray_DATA((PyArrayObject*) ATR))[i] = sum;
   }
   return ATR;
 }
