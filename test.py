@@ -2,7 +2,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import time
-from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA, calculateEMA, calculateWMA, calculateATR
+from statisco.processingFunctions import closingReturns, averageReturns, varianceReturns, stdDeviation, covarianceReturns, correlationReturns, compoundInterest, moneyMadeInAYear, compoundInterestTime, calculateSMA, calculateEMA, calculateWMA, calculateATR, calculateATRwma
 import statisco.processingFunctions as stco
 import math
 
@@ -71,6 +71,33 @@ def calculateATR_NP(Close_t, High_t, Low_t, window_t):
     for i in range(window_t + 1, Close_t.size):
         ATR[i]  = np.mean(trueRange[i - window_t:i])
     return ATR
+def calculateATRwma_NP(CLose_t, High_t, Low_t, window_t):
+    size = len(Close_t)
+    true_range = np.zeros(size)
+    weighted_atr = np.zeros(size)
+    for i in range(size):
+        if i > 0:
+            true_range[i] = max(
+                abs(High_t[i] - Low_t[i]),
+                max(
+                    abs(High_t[i] - Close_t[i - 1]),
+                    abs(Low_t[i] - Close_t[i - 1])
+                )
+            )
+        else:
+            true_range[i] = abs(High_t[i] - Low_t[i])
+    
+    for i in range(window_t, size):
+        weighted_sum = 0
+        weight_sum = 0
+        weight = 0
+        for j in range(i - window_t, i + 1):
+            weight += j - i + window_t + 1
+            weighted_sum += true_range[j] * weight
+            weight_sum += weight
+
+        weighted_atr[i] = weighted_sum / weight_sum
+    return weighted_atr
 def cosine_similarity(vector1, vector2):
     dot_product = np.dot(vector1, vector2)
     norm_vector1 = np.linalg.norm(vector1)
@@ -540,7 +567,29 @@ def test_ATR_1():
     print(ctimes)
     print(nptimes)
     print("C wins" if ctimes < nptimes else "numpy wins")
+def test_ATRwma_1():
+    # CLose, high low, window_t
+    stock_data          =   yf.download("NVDA", start="2022-01-01", end="2022-12-31")
+    High                =   stock_data["High"].to_numpy()
+    Close               =   stock_data["Close"].to_numpy()
+    Low                 =   stock_data["Low"].to_numpy()
 
+    start_time          = time.time()
+    ATR                 = calculateATRwma(High, Close, Low, 7)
+    end_time            = time.time()
+    ctimes              = f"C extension time: \t{end_time - start_time :.10f}"
+
+    start_time      = time.time()
+    ATR_np          = calculateATRwma_NP(High, Close, Low, 7)
+    end_time        = time.time()
+    nptimes         = f"Numpy time: \t\t{end_time - start_time :.10f}"
+
+    print(f"returns: {returns.shape}")
+    print(ATR)
+    print(ATR_np)
+    print(ctimes)
+    print(nptimes)
+    print("C wins" if ctimes < nptimes else "numpy wins")
 
 if __name__ == "__main__":
     print("TEST")
@@ -583,3 +632,9 @@ if __name__ == "__main__":
     test_EMA_1()
     print("="*60)
     test_EMA_2()
+    print("="*60)
+    print("ATR")
+    test_ATR_1()
+    print("="*60)
+    print("WMA ATR")
+    test_ATRwma_1()

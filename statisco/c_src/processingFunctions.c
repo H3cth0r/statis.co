@@ -392,6 +392,7 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
     PyErr_SetString(PyExc_TypeError, "Invalid Arguments. Expected three numpy arrays and an int.");
     return NULL;
   }
+  PySys_WriteStdout("first one");
 
   npy_intp size           =  PyArray_SIZE(Close_t);
   npy_intp size_array[1]  = {size};
@@ -411,18 +412,69 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
       ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
     }
   }
+  PySys_WriteStdout("second");
 
   double sum = 0;
   for(npy_intp i = window_t; i < size; i++){
-    sum = 0;
-    for(npy_intp j = i - size; j < i; j++) {
-      sum += *(double*)PyArray_GetPtr((PyArrayObject*)trueRange, &j);
-    }
-    ((double*)PyArray_DATA((PyArrayObject*) ATR))[i] = sum;
+      sum = 0;
+      for(npy_intp j = i - window_t; j < i; j++) {
+        sum += *(double*)PyArray_GetPtr((PyArrayObject*)trueRange, &j);
+        // sum += ((double *)PyArray_GetPtr((PyArrayObject *)trueRange, &j))[0];
+      }
+      ((double*)PyArray_DATA((PyArrayObject*) ATR))[i] = sum;
+      // ((double *)PyArray_GETPTR1((PyArrayObject *)ATR, i))[0] = sum;
   }
   return ATR;
 }
 
+PyObject *calculateATRwma(PyObject *self, PyObject *args){
+  PyArrayObject *Close_t;
+  PyArrayObject *High_t;
+  PyArrayObject *Low_t;
+  int window_t;
+
+  if(!PyArg_ParseTuple(args, "O!O!O!i", &PyArray_Type, &Close_t, &PyArray_Type, &High_t, &PyArray_Type, &Low_t, &window_t) || PyErr_Occurred()) {
+    PyErr_SetString(PyExc_TypeError, "Invalid Arguments. Expected three numpy arrays and an int.");
+    return NULL;
+  }
+
+  npy_intp size             = PyArray_SIZE(Close_t);
+  npy_intp size_array[1]    = {size};
+  PyObject *trueRange       = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+  PyObject *weightedATR     = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
+  
+  for(npy_intp i = 0; i < size; i++) {
+    if( i > 0){
+      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fmax(
+                          fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)), 
+                          fmax(
+                                fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &i - 1)),
+                                fabs(*(double*)PyArray_GetPtr(Low_t, &i)  - *(double*)PyArray_GetPtr(Close_t, &i - 1))
+                          )
+                      );
+    }else{
+      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
+    }
+  }
+
+  double weightedSum;
+  double weightSum;
+  double weight             = 0;
+  for(npy_intp i = window_t; i < size; i++) {
+    weightedSum = 0;
+    weightSum   = 0;
+    weight      = 0;
+    for(npy_intp j = i - window_t; j <= i; j++) {
+      weight        += j - i + window_t + 1; 
+      weightedSum   += (*(double*)PyArray_GetPtr((PyArrayObject*) trueRange, &j)) * weight;
+      weightSum     += weight;
+    }
+    ((double*)PyArray_DATA((PyArrayObject*) weightedATR))[i] = weightedSum / weightSum;
+  }
+
+  return weightedATR;
+
+}
 
 
 PyMethodDef methods[] = {
@@ -440,6 +492,7 @@ PyMethodDef methods[] = {
   {"calculateEMA",          (PyCFunction)calculateEMA,            METH_VARARGS, "Computes the exponential moving average."},
   {"calculateWMA",          (PyCFunction)calculateWMA,            METH_VARARGS, "Computes the exponential moving average."},
   {"calculateATR",          (PyCFunction)calculateATR,            METH_VARARGS, "Computes the averege true rate."},
+  {"calculateATRwma",       (PyCFunction)calculateATRwma,         METH_VARARGS, "Computes the weighter moving average true rate."},
   {NULL, NULL, 0, NULL}
 };
 
