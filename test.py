@@ -58,31 +58,27 @@ def calculateWMA_NP(returns, window_t):
         WMA[i] = sum
     return WMA
 def calculateATR_NP(Close_t, High_t, Low_t, window_t):
-    size = len(Close_t)
-    trueRange = np.zeros(size, dtype=np.double)
-    ATR = np.zeros(size, dtype=np.double)
+    if len(Close_t) != len(High_t) or len(Close_t) != len(Low_t):
+        raise ValueError("Close_t, High_t, and Low_t should have the same length")
 
-    for i in range(size):
-        if i > 0:
-            prev_i = i - 1
-            trueRange[i] = max(
-                abs(High_t[i] - Low_t[i]),
-                max(
-                    abs(High_t[i] - Close_t[prev_i]),
-                    abs(Low_t[i] - Close_t[prev_i])
-                )
-            )
-        else:
-            trueRange[i] = abs(High_t[i] - Low_t[i])
-
-    sum = 0
-    for i in range(window_t, size):
-        sum = 0
-        for j in range(i - window_t, i):
-            sum += trueRange[j]
-        ATR[i] = sum
-
-    return ATR
+    # Calculate the true range (TR) for each period
+    high_low = High_t - Low_t
+    high_close = np.abs(High_t - Close_t)
+    low_close = np.abs(Low_t - Close_t)
+    
+    true_range = np.maximum.reduce([high_low, high_close, low_close])
+    
+    # Initialize an array to store ATR values
+    atr = np.zeros_like(Close_t)
+    
+    # Calculate the first ATR as the simple moving average of true range
+    atr[window_t-1] = np.mean(true_range[:window_t])
+    
+    # Calculate subsequent ATR values using the previous ATR values
+    for i in range(window_t, len(Close_t)):
+        atr[i] = ((window_t - 1) * atr[i-1] + true_range[i]) / window_t
+    
+    return atr
 def calculateATRwma_NP(CLose_t, High_t, Low_t, window_t):
     size = len(Close_t)
     true_range = np.zeros(size)
@@ -110,6 +106,25 @@ def calculateATRwma_NP(CLose_t, High_t, Low_t, window_t):
 
         weighted_atr[i] = weighted_sum / weight_sum
     return weighted_atr
+def calculateATR_prev(df_t, numberOfDays_t):
+	trueRange = []
+	ATR = []
+
+	for i in range(0, len(df_t.Close)):
+		if i > 0:
+			trueRange.append(max([abs(df_t.High[i] - df_t.Low[i]), abs(df_t.High[i] - df_t.Close[i-1]), abs(df_t.Low[i] - df_t.Close[i-1])]))
+		else:
+			trueRange.append(max([abs(df_t.High[i] - df_t.Low[i]), 0, 0]))
+
+	for i in range(numberOfDays_t+1):
+		ATR.append(0)
+	for i in range(numberOfDays_t+1, len(df_t.Close)):
+		sum = 0
+		for j in range(i-numberOfDays_t, i):
+			#print(j)
+			sum += trueRange[j]
+		ATR.append(sum/numberOfDays_t)
+	return ATR
 def cosine_similarity(vector1, vector2):
     dot_product = np.dot(vector1, vector2)
     norm_vector1 = np.linalg.norm(vector1)
@@ -604,46 +619,46 @@ def test_ATRwma_1():
     print("C wins" if ctimes < nptimes else "numpy wins")
 
 if __name__ == "__main__":
-    print("TEST")
-    test_closingReturns_1()
-    print("="*60)
-    test_closingReturns_2()
-    print("="*60)
-    test_averageReturns_1()
-    print("="*60)
-    test_averageReturns_2()
-    print("="*60)
-    test_varianceReturns_1()
-    print("="*60)
-    test_varianceReturns_2()
-    print("="*60)
-    test_stdDeviation_1()
-    print("="*60)
-    test_stdDeviation_2()
-    print("="*60)
-    test_covarianceReturns_1()
-    print("="*60)
-    print("COVARIANCE TEST")
-    test_covarianceReturns_2()
-    print("="*60)
-    test_correlationReturns_1()
-    print("="*60)
-    print("CORRELATION TEST")
-    test_correlationReturns_2()
-    print("="*60)
-    test_compoundInterest()
-    print("="*60)
-    test_moneyMadeInAYear()
-    print("="*60)
-    test_compoundInterestTime()
-    print("="*60)
-    test_SMA_1()
-    print("="*60)
-    test_SMA_2()
-    print("="*60)
-    test_EMA_1()
-    print("="*60)
-    test_EMA_2()
+    # print("TEST")
+    # test_closingReturns_1()
+    # print("="*60)
+    # test_closingReturns_2()
+    # print("="*60)
+    # test_averageReturns_1()
+    # print("="*60)
+    # test_averageReturns_2()
+    # print("="*60)
+    # test_varianceReturns_1()
+    # print("="*60)
+    # test_varianceReturns_2()
+    # print("="*60)
+    # test_stdDeviation_1()
+    # print("="*60)
+    # test_stdDeviation_2()
+    # print("="*60)
+    # test_covarianceReturns_1()
+    # print("="*60)
+    # print("COVARIANCE TEST")
+    # test_covarianceReturns_2()
+    # print("="*60)
+    # test_correlationReturns_1()
+    # print("="*60)
+    # print("CORRELATION TEST")
+    # test_correlationReturns_2()
+    # print("="*60)
+    # test_compoundInterest()
+    # print("="*60)
+    # test_moneyMadeInAYear()
+    # print("="*60)
+    # test_compoundInterestTime()
+    # print("="*60)
+    # test_SMA_1()
+    # print("="*60)
+    # test_SMA_2()
+    # print("="*60)
+    # test_EMA_1()
+    # print("="*60)
+    # test_EMA_2()
     print("="*60)
     print("ATR")
     test_ATR_1()
