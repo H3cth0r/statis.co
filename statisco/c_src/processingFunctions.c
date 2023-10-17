@@ -392,27 +392,28 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
     PyErr_SetString(PyExc_TypeError, "Invalid Arguments. Expected three numpy arrays and an int.");
     return NULL;
   }
-  PySys_WriteStdout("first one");
 
   npy_intp size           =  PyArray_SIZE(Close_t);
   npy_intp size_array[1]  = {size};
   PyObject *trueRange     = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
   PyObject *ATR           = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
 
+  npy_intp prev_i;
   for(npy_intp i = 0; i < size; i++){
     if( i > 0){
-      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fmax(
-                          fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)), 
-                          fmax(
-                                fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &i - 1)),
-                                fabs(*(double*)PyArray_GetPtr(Low_t, &i)  - *(double*)PyArray_GetPtr(Close_t, &i - 1))
-                          )
-                      );
+      prev_i = i - 1;
+      ((double*)PyArray_DATA((PyArrayObject*)trueRange))[i] = fmax(
+          fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)),
+          fmax(
+              fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &prev_i)),
+              fabs(*(double*)PyArray_GetPtr(Low_t, &i) - *(double*)PyArray_GetPtr(Close_t, &prev_i))
+          )
+      );
+
     }else{
       ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
     }
   }
-  PySys_WriteStdout("second");
 
   double sum = 0;
   for(npy_intp i = window_t; i < size; i++){

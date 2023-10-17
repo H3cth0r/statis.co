@@ -58,18 +58,30 @@ def calculateWMA_NP(returns, window_t):
         WMA[i] = sum
     return WMA
 def calculateATR_NP(Close_t, High_t, Low_t, window_t):
-    trueRange   = np.zeros(Close_t.size)
-    ATR         = np.zeros(Close_t.size)
+    size = len(Close_t)
+    trueRange = np.zeros(size, dtype=np.double)
+    ATR = np.zeros(size, dtype=np.double)
 
-    for i in range(1, Close_t.size):
-        trueRange[i] = max([
-            abs(High_t[i]   - Low_t[i]),
-            abs(High_t[i]   - Close_t[i]),
-            abs(Low_t[i]    - Close_t[i])
-        ]);
+    for i in range(size):
+        if i > 0:
+            prev_i = i - 1
+            trueRange[i] = max(
+                abs(High_t[i] - Low_t[i]),
+                max(
+                    abs(High_t[i] - Close_t[prev_i]),
+                    abs(Low_t[i] - Close_t[prev_i])
+                )
+            )
+        else:
+            trueRange[i] = abs(High_t[i] - Low_t[i])
 
-    for i in range(window_t + 1, Close_t.size):
-        ATR[i]  = np.mean(trueRange[i - window_t:i])
+    sum = 0
+    for i in range(window_t, size):
+        sum = 0
+        for j in range(i - window_t, i):
+            sum += trueRange[j]
+        ATR[i] = sum
+
     return ATR
 def calculateATRwma_NP(CLose_t, High_t, Low_t, window_t):
     size = len(Close_t)
@@ -561,7 +573,7 @@ def test_ATR_1():
     end_time        = time.time()
     nptimes         = f"Numpy time: \t\t{end_time - start_time :.10f}"
 
-    print(f"returns: {returns.shape}")
+    # print(f"returns: {returns.shape}")
     print(ATR)
     print(ATR_np)
     print(ctimes)
@@ -635,6 +647,6 @@ if __name__ == "__main__":
     print("="*60)
     print("ATR")
     test_ATR_1()
-    print("="*60)
-    print("WMA ATR")
-    test_ATRwma_1()
+    # # print("="*60)
+    # print("WMA ATR")
+    # test_ATRwma_1()
