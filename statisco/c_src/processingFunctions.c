@@ -407,7 +407,6 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
 
     int len = PyArray_SIZE(Close_t);
 
-    // Check if lengths match
     if (len != PyArray_SIZE(High_t) || len != PyArray_SIZE(Low_t)) {
         PyErr_SetString(PyExc_ValueError, "Close_t, High_t, and Low_t should have the same length");
         Py_XDECREF(Close_t);
@@ -416,16 +415,13 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    // Access data pointers
     double *Close_t_data = (double *)PyArray_DATA(Close_t);
     double *High_t_data = (double *)PyArray_DATA(High_t);
     double *Low_t_data = (double *)PyArray_DATA(Low_t);
 
-    // Allocate memory for atr array
     PyArrayObject *atr = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(Close_t), NPY_DOUBLE);
     double *atr_data = (double *)PyArray_DATA(atr);
 
-    // Calculate ATR
     for (int i = 0; i < window_t - 1; i++) {
         atr_data[i] = 0.0;
     }
@@ -439,7 +435,6 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
         atr_data[i] = ((window_t - 1) * atr_data[i-1] + true_range) / window_t;
     }
 
-    // Cleanup and return result
     Py_XDECREF(Close_t);
     Py_XDECREF(High_t);
     Py_XDECREF(Low_t);
@@ -447,52 +442,72 @@ PyObject *calculateATR(PyObject *self, PyObject *args) {
 }
 
 PyObject *calculateATRwma(PyObject *self, PyObject *args){
-  PyArrayObject *Close_t;
-  PyArrayObject *High_t;
-  PyArrayObject *Low_t;
-  int window_t;
+    PyObject *Close_t_obj, *High_t_obj, *Low_t_obj;
+    int window_t;
 
-  if(!PyArg_ParseTuple(args, "O!O!O!i", &PyArray_Type, &Close_t, &PyArray_Type, &High_t, &PyArray_Type, &Low_t, &window_t) || PyErr_Occurred()) {
-    PyErr_SetString(PyExc_TypeError, "Invalid Arguments. Expected three numpy arrays and an int.");
-    return NULL;
-  }
-
-  npy_intp size             = PyArray_SIZE(Close_t);
-  npy_intp size_array[1]    = {size};
-  PyObject *trueRange       = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
-  PyObject *weightedATR     = PyArray_Zeros(1, size_array, PyArray_DescrFromType(NPY_DOUBLE), 0);
-  
-  for(npy_intp i = 0; i < size; i++) {
-    if( i > 0){
-      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fmax(
-                          fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i)), 
-                          fmax(
-                                fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Close_t, &i - 1)),
-                                fabs(*(double*)PyArray_GetPtr(Low_t, &i)  - *(double*)PyArray_GetPtr(Close_t, &i - 1))
-                          )
-                      );
-    }else{
-      ((double*)PyArray_DATA((PyArrayObject*) trueRange))[i]  = fabs(*(double*)PyArray_GetPtr(High_t, &i) - *(double*)PyArray_GetPtr(Low_t, &i));
+    if (!PyArg_ParseTuple(args, "OOOi", &Close_t_obj, &High_t_obj, &Low_t_obj, &window_t)) {
+        PyErr_SetString(PyExc_TypeError, "Invalid input arguments");
+        return NULL;
     }
-  }
 
-  double weightedSum;
-  double weightSum;
-  double weight             = 0;
-  for(npy_intp i = window_t; i < size; i++) {
-    weightedSum = 0;
-    weightSum   = 0;
-    weight      = 0;
-    for(npy_intp j = i - window_t; j <= i; j++) {
-      weight        += j - i + window_t + 1; 
-      weightedSum   += (*(double*)PyArray_GetPtr((PyArrayObject*) trueRange, &j)) * weight;
-      weightSum     += weight;
+    PyArrayObject *Close_t = (PyArrayObject *)PyArray_FROM_OTF(Close_t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *High_t = (PyArrayObject *)PyArray_FROM_OTF(High_t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *Low_t = (PyArrayObject *)PyArray_FROM_OTF(Low_t_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+
+    if (Close_t == NULL || High_t == NULL || Low_t == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Invalid input arrays");
+        Py_XDECREF(Close_t);
+        Py_XDECREF(High_t);
+        Py_XDECREF(Low_t);
+        return NULL;
     }
-    ((double*)PyArray_DATA((PyArrayObject*) weightedATR))[i] = weightedSum / weightSum;
-  }
 
-  return weightedATR;
+    int len = PyArray_SIZE(Close_t);
 
+    if (len != PyArray_SIZE(High_t) || len != PyArray_SIZE(Low_t)) {
+        PyErr_SetString(PyExc_ValueError, "Close_t, High_t, and Low_t should have the same length");
+        Py_XDECREF(Close_t);
+        Py_XDECREF(High_t);
+        Py_XDECREF(Low_t);
+        return NULL;
+    }
+
+    double *Close_t_data = (double *)PyArray_DATA(Close_t);
+    double *High_t_data = (double *)PyArray_DATA(High_t);
+    double *Low_t_data = (double *)PyArray_DATA(Low_t);
+
+    PyArrayObject *atr = (PyArrayObject *)PyArray_SimpleNew(1, PyArray_DIMS(Close_t), NPY_DOUBLE);
+    double *atr_data = (double *)PyArray_DATA(atr);
+
+    double denominator = window_t * (window_t + 1) / 2.0;  
+
+    double sum = 0.0;
+    for (int i = 0; i < window_t; i++) {
+        double high_low = High_t_data[i] - Low_t_data[i];
+        double high_close = fabs(High_t_data[i] - Close_t_data[i]);
+        double low_close = fabs(Low_t_data[i] - Close_t_data[i]);
+        double true_range = fmax(high_low, fmax(high_close, low_close));
+        sum += true_range;
+    }
+    atr_data[window_t-1] = sum / window_t;
+
+    for (int i = window_t; i < len; i++) {
+        double weighted_sum = 0.0;
+        for (int j = 1; j <= window_t; j++) {
+            int idx = i - window_t + j;
+            double high_low = High_t_data[idx] - Low_t_data[idx];
+            double high_close = fabs(High_t_data[idx] - Close_t_data[idx]);
+            double low_close = fabs(Low_t_data[idx] - Close_t_data[idx]);
+            double true_range = fmax(high_low, fmax(high_close, low_close));
+            weighted_sum += j * true_range;
+        }
+        atr_data[i] = weighted_sum / denominator;
+    }
+
+    Py_XDECREF(Close_t);
+    Py_XDECREF(High_t);
+    Py_XDECREF(Low_t);
+    return PyArray_Return(atr);
 }
 
 

@@ -61,6 +61,24 @@ def calculateATR_NP(Close_t, High_t, Low_t, window_t):
     if len(Close_t) != len(High_t) or len(Close_t) != len(Low_t):
         raise ValueError("Close_t, High_t, and Low_t should have the same length")
 
+    high_low = High_t - Low_t
+    high_close = np.abs(High_t - Close_t)
+    low_close = np.abs(Low_t - Close_t)
+    
+    true_range = np.maximum.reduce([high_low, high_close, low_close])
+    
+    atr = np.zeros_like(Close_t)
+    
+    atr[window_t-1] = np.mean(true_range[:window_t])
+    
+    for i in range(window_t, len(Close_t)):
+        atr[i] = ((window_t - 1) * atr[i-1] + true_range[i]) / window_t
+    
+    return atr
+def calculateATRwma_NP(Close_t, High_t, Low_t, window_t):
+    if len(Close_t) != len(High_t) or len(Close_t) != len(Low_t):
+        raise ValueError("Close_t, High_t, and Low_t should have the same length")
+
     # Calculate the true range (TR) for each period
     high_low = High_t - Low_t
     high_close = np.abs(High_t - Close_t)
@@ -69,43 +87,20 @@ def calculateATR_NP(Close_t, High_t, Low_t, window_t):
     true_range = np.maximum.reduce([high_low, high_close, low_close])
     
     # Initialize an array to store ATR values
-    atr = np.zeros_like(Close_t)
+    atr = np.zeros_like(Close_t, dtype=np.float64)
     
     # Calculate the first ATR as the simple moving average of true range
     atr[window_t-1] = np.mean(true_range[:window_t])
     
-    # Calculate subsequent ATR values using the previous ATR values
+    # Calculate subsequent ATR values using the weighted moving average
+    denominator = window_t * (window_t + 1) / 2  # Sum of integers from 1 to window_t
+    
     for i in range(window_t, len(Close_t)):
-        atr[i] = ((window_t - 1) * atr[i-1] + true_range[i]) / window_t
+        weighted_sum = np.sum(np.arange(1, window_t + 1) * true_range[i - window_t + 1:i + 1])
+        atr[i] = weighted_sum / denominator
     
     return atr
-def calculateATRwma_NP(CLose_t, High_t, Low_t, window_t):
-    size = len(Close_t)
-    true_range = np.zeros(size)
-    weighted_atr = np.zeros(size)
-    for i in range(size):
-        if i > 0:
-            true_range[i] = max(
-                abs(High_t[i] - Low_t[i]),
-                max(
-                    abs(High_t[i] - Close_t[i - 1]),
-                    abs(Low_t[i] - Close_t[i - 1])
-                )
-            )
-        else:
-            true_range[i] = abs(High_t[i] - Low_t[i])
-    
-    for i in range(window_t, size):
-        weighted_sum = 0
-        weight_sum = 0
-        weight = 0
-        for j in range(i - window_t, i + 1):
-            weight += j - i + window_t + 1
-            weighted_sum += true_range[j] * weight
-            weight_sum += weight
 
-        weighted_atr[i] = weighted_sum / weight_sum
-    return weighted_atr
 def calculateATR_prev(df_t, numberOfDays_t):
 	trueRange = []
 	ATR = []
@@ -611,7 +606,6 @@ def test_ATRwma_1():
     end_time        = time.time()
     nptimes         = f"Numpy time: \t\t{end_time - start_time :.10f}"
 
-    print(f"returns: {returns.shape}")
     print(ATR)
     print(ATR_np)
     print(ctimes)
@@ -662,6 +656,6 @@ if __name__ == "__main__":
     print("="*60)
     print("ATR")
     test_ATR_1()
-    # # print("="*60)
-    # print("WMA ATR")
-    # test_ATRwma_1()
+    print("="*60)
+    print("WMA ATR")
+    test_ATRwma_1()
