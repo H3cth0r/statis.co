@@ -5,3 +5,9 @@ build/*
 
 # ignore mac files
 *.DS_Store
+
+# ignore env-folder
+statisco-env/*
+
+# ignore pycache
+__pycache__

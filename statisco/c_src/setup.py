@@ -16,7 +16,8 @@ def main():
                 )
             ],
     )
-    shutil.move('processingFunctions.cpython-39-darwin.so', os.path.join('..', 'processingFunctions.cpython-39-darwin.so'))
+    platform = 'cpython-39-darwin' if os.uname().sysname == 'Darwin' else 'cpython-311-x86_64-linux-gnu' 
+    shutil.move(f'processingFunctions.{platform}.so', os.path.join('..', f'processingFunctions.{platform}.so'))
 
 if __name__ == "__main__":
     main()
