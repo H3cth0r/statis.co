@@ -13,11 +13,16 @@ def main():
                 Extension("processingFunctions",
                           ["processingFunctions.c"],
                           include_dirs=[np.get_include(), "/opt/homebrew/opt/libomp/include"],
-                )
+                ),
+                Extension("statistics",
+                          ["statistics.c"],
+                          include_dirs=[np.get_include(), "/opt/homebrew/opt/libomp/include"],
+                ),
             ],
     )
     platform = 'cpython-39-darwin' if os.uname().sysname == 'Darwin' else 'cpython-311-x86_64-linux-gnu' 
     shutil.move(f'processingFunctions.{platform}.so', os.path.join('..', f'processingFunctions.{platform}.so'))
+    shutil.move(f'statistics.{platform}.so', os.path.join('..', f'statistics.{platform}.so'))
 
 if __name__ == "__main__":
     main()
