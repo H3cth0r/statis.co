@@ -171,6 +171,58 @@ PyObject *stdDev(PyObject *self, PyObject *args){
   return Py_BuildValue("d", sqrt(sum_squared_diff / size));
 }
 
+PyObject *covariance(PyObject *self, PyObject *args) {
+    PyObject *input_array_one;
+    npy_float64 mean_array_one;
+    PyObject *input_array_two;
+    npy_float64 mean_array_two;
+    if (!PyArg_ParseTuple(args, "OdOd", &input_array_one, &mean_array_one, &input_array_two, &mean_array_two) || PyErr_Occurred()) {
+        return NULL;
+    }
+
+    PyArrayObject *arr_one = (PyArrayObject *)PyArray_FROM_OTF(input_array_one, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    PyArrayObject *arr_two = (PyArrayObject *)PyArray_FROM_OTF(input_array_two, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (arr_one == NULL || arr_two == NULL) {
+        Py_XDECREF(arr_one);
+        Py_XDECREF(arr_two);
+        return NULL;
+    }
+
+    double *data_one = (double *)PyArray_DATA(arr_one);
+    double *data_two = (double *)PyArray_DATA(arr_two);
+    npy_intp size_one = PyArray_SIZE(arr_one);
+    npy_intp size_two = PyArray_SIZE(arr_two);
+
+    if (size_one == 0 || size_two == 0 || size_one != size_two) {
+        PyErr_SetString(PyExc_ValueError, "Input arrays are empty or not the same size.");
+        Py_XDECREF(arr_one);
+        Py_XDECREF(arr_two);
+        return NULL;
+    }
+
+    double covariance = 0.0;
+    double diff_one;
+    double diff_two;
+    if (size_one > 1000) {
+        #pragma omp parallel for private(diff_one, diff_two) reduction(+:covariance)
+        for (npy_intp i = 0; i < size_one; i++) {
+            diff_one = data_one[i] - mean_array_one;
+            diff_two = data_two[i] - mean_array_two;
+            covariance += diff_one * diff_two;
+        }
+    } else {
+        for (npy_intp i = 0; i < size_one; i++) {
+            diff_one = data_one[i] - mean_array_one;
+            diff_two = data_two[i] - mean_array_two;
+            covariance += diff_one * diff_two;
+        }
+    }
+
+    Py_XDECREF(arr_one);
+    Py_XDECREF(arr_two);
+
+    return Py_BuildValue("d", covariance / (size_one - 1));
+}
 
 
 
@@ -179,6 +231,7 @@ PyMethodDef methods[] = {
   {"mean",                  (PyCFunction)mean,                    METH_VARARGS, "Computes the mean/average."},
   {"variance",              (PyCFunction)variance,                METH_VARARGS, "Computes the variance based on the average returns."},
   {"stdDev",                (PyCFunction)stdDev,                  METH_VARARGS, "Computes the standard deviation based on the average returns."},
+  {"covariance",            (PyCFunction)covariance,              METH_VARARGS, "Computes the covariance."},
   {NULL, NULL, 0, NULL}
 };
 
