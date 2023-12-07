@@ -12,7 +12,7 @@ PyObject *closingReturns(PyObject *self, PyObject *args){
     return NULL;
   }
   PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(input_array, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
-    if(arr == NULL){
+  if(arr == NULL){
     return NULL;
   }
 
@@ -29,19 +29,20 @@ PyObject *closingReturns(PyObject *self, PyObject *args){
   if (size > 1000) {
       #pragma omp parallel for
       for (npy_intp i = 0; i < size - 1; i++) {
-          result_data[i] = data[i] / data[i + 1] - 1;
+          result_data[i ] = data[i] / data[i - 1] - 1;
       }
   } else {
       for (npy_intp i = 0; i < size - 1; i++) {
-            result_data[i] = data[i] / data[i + 1] - 1;
+            result_data[i] = data[i] / data[i - 1] - 1;
       }
   }
   
   result_data[size - 1] = 0;
+  result_data[0] = 0;
 
   if (PyErr_Occurred()) {
       Py_XDECREF(arr);
-      Py_XDECREF(result_data);
+      Py_XDECREF(result);
       return NULL;
   }
 
@@ -49,9 +50,135 @@ PyObject *closingReturns(PyObject *self, PyObject *args){
   return result;
 }
 
+PyObject *mean(PyObject *self, PyObject *args){
+  PyObject *input_array;
+  if(!PyArg_ParseTuple(args, "O", &input_array) || PyErr_Occurred()){
+    return NULL;
+  }
+
+  PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(input_array, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+  if(arr == NULL){
+    return NULL;
+  }
+  double *data = (double*)PyArray_DATA(arr);
+  npy_intp size = PyArray_SIZE(arr);
+
+  if (size == 0) {
+      PyErr_SetString(PyExc_ValueError, "Input array is empty.");
+      Py_XDECREF(arr);
+      return NULL;
+  }
+  
+  double sum = 0.0;
+  #pragma omp parallel for reduction(+:sum)
+  for(npy_intp i = 0; i  < size; i++) {
+    sum += data[i];
+  }
+  Py_DECREF(arr);
+  if (PyErr_Occurred()) {
+      return NULL;
+  }
+  return Py_BuildValue("d", sum / size);
+}
+
+
+PyObject *variance(PyObject *self, PyObject *args){
+    PyObject *input_array;
+    npy_float64 average_t;
+
+    if(!PyArg_ParseTuple(args, "Od", &input_array, &average_t) || PyErr_Occurred()){
+        return NULL;
+    }
+
+    PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(input_array, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if(arr == NULL){
+        return NULL;
+    }
+
+    double *data = (double*)PyArray_DATA(arr);
+    npy_intp size = PyArray_SIZE(arr);
+
+    if (size == 0) {
+        PyErr_SetString(PyExc_ValueError, "Input array is empty.");
+        Py_XDECREF(arr);
+        return NULL;
+    }
+
+    double averageDiffSqd = 0.0;
+    double diff;
+
+    if(size > 1000){
+        #pragma omp parallel for private(diff) reduction(+:averageDiffSqd) 
+        for(npy_intp i = 0; i < size; i++) {
+            if (i >= size) {
+                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+                Py_DECREF(arr);
+                return NULL;
+            }
+            diff = data[i] - average_t;
+            averageDiffSqd += diff * diff;
+        }
+    } else {
+        for(npy_intp i = 0; i < size; i++) {
+            if (i >= size) {
+                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+                Py_DECREF(arr);
+                return NULL;
+            }
+            diff = data[i] - average_t;
+            averageDiffSqd += diff * diff;
+        }
+    }
+
+    Py_DECREF(arr);
+    return Py_BuildValue("d", averageDiffSqd/size);
+}
+
+PyObject *stdDev(PyObject *self, PyObject *args){
+  PyObject *input_array;
+  npy_float64 average_t;
+  if(!PyArg_ParseTuple(args, "Od", &input_array, &average_t) || PyErr_Occurred()){
+    return NULL;
+  }
+
+  PyArrayObject *arr = (PyArrayObject *)PyArray_FROM_OTF(input_array, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+  if(arr == NULL){
+    return NULL;
+  }
+
+  double *data = (double *)PyArray_DATA(arr);
+  npy_intp size = PyArray_SIZE(arr);
+
+  if (size == 0) {
+    PyErr_SetString(PyExc_ValueError, "Input array is empty.");
+    Py_XDECREF(arr);
+    return NULL;
+  }
+
+  double diff;
+  double sum_squared_diff = 0.0;
+
+  // Use a single loop body
+  #pragma omp parallel for private(diff) reduction(+:sum_squared_diff)
+  for (npy_intp i = 0; i < size; i++) {
+    diff = data[i] - average_t;
+    sum_squared_diff += diff * diff;
+  }
+
+  // Release the reference to the PyArrayObject
+  Py_XDECREF(arr);
+
+  return Py_BuildValue("d", sqrt(sum_squared_diff / size));
+}
+
+
+
 
 PyMethodDef methods[] = {
   {"closingReturns",        (PyCFunction)closingReturns,          METH_VARARGS, "Computes the return column from dataframe."},
+  {"mean",                  (PyCFunction)mean,                    METH_VARARGS, "Computes the mean/average."},
+  {"variance",              (PyCFunction)variance,                METH_VARARGS, "Computes the variance based on the average returns."},
+  {"stdDev",                (PyCFunction)stdDev,                  METH_VARARGS, "Computes the standard deviation based on the average returns."},
   {NULL, NULL, 0, NULL}
 };
 
