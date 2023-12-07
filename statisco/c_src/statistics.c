@@ -224,7 +224,16 @@ PyObject *covariance(PyObject *self, PyObject *args) {
     return Py_BuildValue("d", covariance / (size_one - 1));
 }
 
+PyObject *correlation(PyObject *self, PyObject *args) {
+    npy_float64 xyCovar_t, xVar_t, yVar_t;
+    
+    if (!PyArg_ParseTuple(args, "ddd", &xyCovar_t, &xVar_t, &yVar_t)) {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected float values.");
+        return NULL;
+    }
 
+    return Py_BuildValue("d", xyCovar_t / (sqrt(xVar_t) * sqrt(yVar_t)));
+}
 
 PyMethodDef methods[] = {
   {"closingReturns",        (PyCFunction)closingReturns,          METH_VARARGS, "Computes the return column from dataframe."},
@@ -232,6 +241,7 @@ PyMethodDef methods[] = {
   {"variance",              (PyCFunction)variance,                METH_VARARGS, "Computes the variance based on the average returns."},
   {"stdDev",                (PyCFunction)stdDev,                  METH_VARARGS, "Computes the standard deviation based on the average returns."},
   {"covariance",            (PyCFunction)covariance,              METH_VARARGS, "Computes the covariance."},
+  {"correlation",           (PyCFunction)correlation,             METH_VARARGS, "Computes the correlation."},
   {NULL, NULL, 0, NULL}
 };
 
