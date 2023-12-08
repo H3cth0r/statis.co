@@ -76,7 +76,7 @@ PyMethodDef methods[] = {
   {"compoundInterest",        (PyCFunction)compoundInterest,          METH_VARARGS, "Computes the compound interest."},
   {"moneyMadeInAYear",        (PyCFunction)moneyMadeInAYear,          METH_VARARGS, "Computes the money made in a year."},
   {"compoundInterestTime",    (PyCFunction)compoundInterestTime,      METH_VARARGS, "Computes the compound interest through time."},
-    {"expectedValue",           (PyCFunction)expectedValue,             METH_VARARGS, "Computes the expected value."},
+  {"expectedValue",           (PyCFunction)expectedValue,             METH_VARARGS, "Computes the expected value."},
   {NULL, NULL, 0, NULL}
 };
 
