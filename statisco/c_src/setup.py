@@ -23,12 +23,17 @@ def main():
                           ["finance.c"],
                           include_dirs=[np.get_include(), omp_include],
                 ),
+                Extension("MAs",
+                          ["indicators/MAs.c"],
+                          include_dirs=[np.get_include(), omp_include],
+                ),
             ],
     )
     platform = 'cpython-39-darwin' if os.uname().sysname == 'Darwin' else 'cpython-311-x86_64-linux-gnu' 
     shutil.move(f'processingFunctions.{platform}.so', os.path.join('..', f'processingFunctions.{platform}.so'))
     shutil.move(f'statistics.{platform}.so', os.path.join('..', f'statistics.{platform}.so'))
     shutil.move(f'finance.{platform}.so', os.path.join('..', f'finance.{platform}.so'))
+    shutil.move(f'MAs.{platform}.so', os.path.join('../indicators', f'MAs.{platform}.so'))
 
 if __name__ == "__main__":
     main()
