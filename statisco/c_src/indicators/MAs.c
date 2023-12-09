@@ -192,6 +192,13 @@ PyObject *WMA(PyObject *self, PyObject *args) {
         result_data[i] = sum;
     }
 
+    if (PyErr_Occurred()) {
+        Py_DECREF(arr);
+        Py_DECREF(result);
+        return NULL;
+    }
+    Py_DECREF(arr);
+
     return result;
 }
 

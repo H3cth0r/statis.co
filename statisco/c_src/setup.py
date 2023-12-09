@@ -27,6 +27,10 @@ def main():
                           ["indicators/MAs.c"],
                           include_dirs=[np.get_include(), omp_include],
                 ),
+                Extension("ATRs",
+                          ["indicators/ATRs.c"],
+                          include_dirs=[np.get_include(), omp_include],
+                ),
             ],
     )
     platform = 'cpython-39-darwin' if os.uname().sysname == 'Darwin' else 'cpython-311-x86_64-linux-gnu' 
@@ -34,6 +38,7 @@ def main():
     shutil.move(f'statistics.{platform}.so', os.path.join('..', f'statistics.{platform}.so'))
     shutil.move(f'finance.{platform}.so', os.path.join('..', f'finance.{platform}.so'))
     shutil.move(f'MAs.{platform}.so', os.path.join('../indicators', f'MAs.{platform}.so'))
+    shutil.move(f'ATRs.{platform}.so', os.path.join('../indicators', f'ATRs.{platform}.so'))
 
 if __name__ == "__main__":
     main()
