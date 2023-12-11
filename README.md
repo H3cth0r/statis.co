@@ -1,3 +1,5 @@
+![logo](https://github.com/H3cth0r/statis.co/blob/main/resources/logo.png)
+
 ## What is Statis.Co?
 Statis.Co is a Python module encompassing diverse financial tools and functionalities, 
 including indicators, statistical calculations, and connections to data sources. 
@@ -38,14 +40,14 @@ To compile the C extension, the primary requirements include the installation of
 
 ## Usage
 This is a usage example:
-```
-    from statisco.statistics import closingReturns, mean
+```python
+from statisco.statistics import closingReturns, mean
 
-    msft["MyCloseReturns"] = closingReturns(msft["Adj Close"])
-    myMean = mean(msft["MyCloseReturns"])
+msft["MyCloseReturns"] = closingReturns(msft["Adj Close"])
+myMean = mean(msft["MyCloseReturns"])
 
-    print(f"myMean: {myMean}")
-    msft.head()
+print(f"myMean: {myMean}")
+msft.head()
 ```
 For a more in-depth understanding of usage, refer to the detailed examples provided in the 
 [test notebook](https://github.com/H3cth0r/statis.co/blob/main/test.ipynb).
