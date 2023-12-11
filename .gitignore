@@ -11,3 +11,7 @@ statisco-env/*
 
 # ignore pycache
 __pycache__
+
+# PyPi dist
+dist/*
+*/Statis.Co.egg-info/*

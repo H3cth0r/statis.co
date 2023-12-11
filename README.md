@@ -1,11 +1,13 @@
 ![logo](https://github.com/H3cth0r/statis.co/blob/main/resources/logo.png)
 
 ## What is Statis.Co?
-Statis.Co is a Python module encompassing diverse financial tools and functionalities, 
+[Statis.Co](https://github.com/H3cth0r/statis.co) is a Python module encompassing diverse financial tools and functionalities, 
 including indicators, statistical calculations, and connections to data sources. 
 The module is crafted in pure C, seamlessly integrated with Numpy's API, and 
 employs parallelization tools such as OpenMP. The primary goal is to facilitate 
 blazing-fast calculations and empower the module to adeptly handle substantial workloads.
+To ensure robust memory management and prevent memory leaks, we utilize tools such as 
+Valgrind and Bloomberg's Memray for in-depth analysis of memory usage.
 
 
 ## Why Statis.Co?
@@ -18,7 +20,7 @@ over a 70% optimization in execution time compared to pure Python NumPy calculat
 
 
 ## Installation
-From PyPi:
+From PyPi. Check the [PyPi](https://pypi.org/project/Statis.Co/) repo:
 ```
 pip install statisco
 ```
@@ -30,7 +32,7 @@ python setup.py sdist bdist_wheel
 
 ## To develop and Test from the source
 ```
-python3 setup.py build_ext --inplace
+python3 statisco/c_src/setup.py build_ext --inplace
 ```
 If you'd like to contribute, please contact me via GitHub.
 
@@ -59,3 +61,7 @@ This is what I’ll be working on:
 - More indicators
 - Automatization Classes
 - Basic ML models integration
+
+## LICENSE
+[Statis.Co](https://github.com/H3cth0r/statis.co) by [Hector Miranda](https://github.com/H3cth0r) is licensed under [Attribution-ShareAlike 4.0 International](http://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1) ![CC](https://mirrors.creativecommons.org/presskit/icons/cc.svg?ref=chooser-v1) ![BY](https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1) ![SA](https://mirrors.creativecommons.org/presskit/icons/sa.svg?ref=chooser-v1).
+
