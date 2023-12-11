@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0","numpy>=1.26.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "Statis.Co"
-version = "0.1.0"
+name = "statisco"
+version = "0.1.1"
 authors = [
   { name="Hector Miranda", email="hectorsucre13@gmail.com" },
 ]
@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication"
 ]
+dependencies = ['numpy>=1.26.2']
 
 [project.urls]
 Homepage = "https://github.com/H3cth0r/statis.co"

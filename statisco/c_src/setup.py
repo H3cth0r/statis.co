@@ -5,7 +5,7 @@ import os
 
 def main():
     omp_include =  "/opt/homebrew/opt/libomp/include" if os.uname().sysname == 'Darwin' else "usr/lib/gcc/x86_64-pc-linux-gnu/13.2.1/include"
-    setup(name="stocksOps",
+    setup(name="statis.co",
             version="1.0.0",
             description="processingFunctions module",
             author="Hector Miranda",
