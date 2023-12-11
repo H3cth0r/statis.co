@@ -20,7 +20,7 @@ over a 70% optimization in execution time compared to pure Python NumPy calculat
 
 
 ## Installation
-From PyPi. Check the [PyPi](https://pypi.org/project/Statis.Co/) repo:
+From PyPi. Check the [PyPi](https://pypi.org/project/statisco/) repo:
 ```
 pip install statisco
 ```
