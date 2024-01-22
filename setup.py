@@ -45,6 +45,13 @@ def main():
                 # extra_compile_args=['-fopenmp'],
                 extra_link_args=['-lgomp'],
             ),
+            Extension(
+                "statisco.preprocessing.normalization",
+                ["statisco/c_src/preprocessing/normalization.c"],
+                include_dirs=[np.get_include()],
+                # extra_compile_args=['-fopenmp'],
+                extra_link_args=['-lgomp'],
+            ),
         ],
         zip_safe=False,
     )
