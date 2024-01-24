@@ -9,7 +9,7 @@ def main():
         description="Processing functions module",
         long_description=open("README.md").read(),
         long_description_content_type="text/markdown",
-        packages=setuptools.find_packages("./statisco/c_src"),
+        packages=setuptools.find_packages(),
         package_dir={'statisco': 'statisco'},
         author="Hector Miranda",
         author_email="hectorsucre13@gmail.com",
