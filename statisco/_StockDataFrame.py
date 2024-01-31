@@ -2,6 +2,7 @@ import pandas
 import yfinance as yf
 import numpy as np
 from .preprocessing.normalization import MinMaxScaler
+from .statistics import closingReturns
 
 
 from contextlib import redirect_stdout
@@ -25,6 +26,11 @@ class StockDataFrame(pandas.DataFrame):
         elif isinstance(ticker, str):
             downloaded_data = self.download(ticker, **kwargs)
         super(StockDataFrame, self).__init__(downloaded_data, *args)
+
+    def calculate(self, close_returns=False):
+        if close_returns:
+            self["CloseReturns"] = closingReturns(self["Adj Close"])
+        return
 
     def download(self, ticker, start=None, end=None, interval="1d", *args, **kwargs):
         # param_list = inspect.getfullargspec(yf.download).args
