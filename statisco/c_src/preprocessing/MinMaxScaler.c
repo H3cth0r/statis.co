@@ -2,6 +2,7 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <numpy/npy_math.h>
 
 typedef struct {
     PyObject_HEAD
@@ -38,6 +39,16 @@ static void MinMaxScaler_dealloc(MinMaxScalerObject* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static PyObject* MinMaxScaler_get_min_vals(MinMaxScalerObject* self, void* closure) {
+    Py_INCREF(self->min_vals);
+    return (PyObject*)self->min_vals;
+}
+
+static PyObject* MinMaxScaler_get_max_vals(MinMaxScalerObject* self, void* closure) {
+    Py_INCREF(self->max_vals);
+    return (PyObject*)self->max_vals;
+}
+
 PyObject* MinMaxScaler_fit(MinMaxScalerObject* self, PyObject* args) {
     PyArrayObject* input_array;
 
@@ -59,17 +70,16 @@ PyObject* MinMaxScaler_fit(MinMaxScalerObject* self, PyObject* args) {
     npy_intp cols = PyArray_DIM(input_array, 1);
     double* data = (double*)PyArray_DATA(input_array);
 
-    for (npy_intp j = 0; j < cols; ++j) {
-        double min_val = data[j];
-        double max_val = data[j];
-        for (npy_intp i = 1; i < rows; ++i) {
-            double val = data[i * cols + j];
-            if (val < min_val) {
-                min_val = val;
-            } else if (val > max_val) {
-                max_val = val;
-            }
-        }
+    for(npy_intp i = 0; i < cols; i++)
+    {
+      double min_val = NPY_INFINITY;
+      double max_val = -NPY_INFINITY;
+      for(npy_intp j = 0; j < rows; j++)
+      {
+        double val = data[j + i * rows];
+        if(min_val > val) min_val = val;
+        if(max_val < val)max_val = val;
+      }
         PyList_Append(self->min_vals, PyFloat_FromDouble(min_val));
         PyList_Append(self->max_vals, PyFloat_FromDouble(max_val));
     }
@@ -84,12 +94,10 @@ PyObject* MinMaxScaler_transform(MinMaxScalerObject* self, PyObject* args) {
     }
 
     // Check input is 2d
-    // if (!PyArray_ISCONTIGUOUS(input_array) || PyArray_TYPE(input_array) != NPY_DOUBLE || PyArray_NDIM(input_array) != 2) {
     if ( PyArray_TYPE(input_array) != NPY_DOUBLE || PyArray_NDIM(input_array) != 2) {
         PyErr_SetString(PyExc_TypeError, "Input must be a 2D contiguous array of doubles.");
         return NULL;
     }
-
     // Get dimensions and data pointer of the input array
     npy_intp rows = PyArray_DIM(input_array, 0);
     npy_intp cols = PyArray_DIM(input_array, 1);
@@ -98,14 +106,15 @@ PyObject* MinMaxScaler_transform(MinMaxScalerObject* self, PyObject* args) {
     PyArrayObject* output_array = (PyArrayObject*)PyArray_SimpleNew(2, PyArray_DIMS(input_array), NPY_DOUBLE);
     double* output_array_data = (double*)PyArray_DATA(output_array);
 
-    // Transform the data using min-max scaling for each column
-    for (npy_intp i = 0; i < rows; ++i) {
-        for (npy_intp j = 0; j < cols; ++j) {
-            double min_val = PyFloat_AsDouble(PyList_GetItem(self->min_vals, j));
-            double max_val = PyFloat_AsDouble(PyList_GetItem(self->max_vals, j));
-            double val = data[i * cols + j];
-            output_array_data[i * cols + j] = (val - min_val) / (max_val - min_val);
-        }
+    for(npy_intp i = 0; i < cols; i++)
+    {
+      double min_val = PyFloat_AsDouble(PyList_GetItem(self->min_vals, i));
+      double max_val = PyFloat_AsDouble(PyList_GetItem(self->max_vals, i));
+      for(npy_intp j = 0; j < rows; j++)
+      {
+          double val     = data[j + i * rows];
+          output_array_data[j * cols + i] = ((val - min_val) / (max_val - min_val));
+      }
     }
 
     return PyArray_Return(output_array);
@@ -118,6 +127,12 @@ static PyMethodDef MinMaxScaler_methods[] = {
     {NULL,          NULL,                                 0,            NULL} 
 };
 
+static PyGetSetDef MinMaxScaler_getset[] = {
+    {"min_vals", (getter)MinMaxScaler_get_min_vals, NULL, "Min values array", NULL},
+    {"max_vals", (getter)MinMaxScaler_get_max_vals, NULL, "Max values array", NULL},
+    {NULL}
+};
+
 static PyTypeObject MinMaxScalerType = {
     .ob_base       = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name      = "normalization.MinMaxScaler",
@@ -127,6 +142,7 @@ static PyTypeObject MinMaxScalerType = {
     .tp_flags     = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
     .tp_doc       = PyDoc_STR("MinMaxScaler object"),
     .tp_methods   = MinMaxScaler_methods,
+    .tp_getset    = MinMaxScaler_getset,
     .tp_init      = (initproc)MinMaxScaler_init,
     .tp_new       = MinMaxScaler_new,  // Add the new method here
 };

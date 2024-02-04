@@ -49,12 +49,12 @@ class StockDataFrame(pandas.DataFrame):
     def normalize(self, inplace=False):
         data            = self.copy().to_numpy()
         data.astype(np.double)
-        min_max_scaler  = MinMaxScaler()
-        min_max_scaler.fit(data)
+        self.min_max_scaler  = MinMaxScaler()
+        self.min_max_scaler.fit(data)
         if inplace: 
-            self[:] = min_max_scaler.transform(data)
+            self[:] = self.min_max_scaler.transform(data)
         else:
-            return min_max_scaler.transform(data)
+            return self.min_max_scaler.transform(data)
 
     def indicators(self):
         pass

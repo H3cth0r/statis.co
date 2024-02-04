@@ -256,6 +256,5 @@ PyModuleDef statistics = {
 PyMODINIT_FUNC PyInit_statistics() {
   import_array(); // init numpy
   PyObject *module = PyModule_Create(&statistics);
-  printf("Imported statistics module\n");
   return module;
 }
