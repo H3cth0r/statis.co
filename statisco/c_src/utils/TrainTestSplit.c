@@ -2,99 +2,85 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
 #include <numpy/arrayobject.h>
+// #include <numpy/arrayscalars.h>
 #include <stdlib.h>
 
 static PyObject *TrainTestSplit(PyObject *self, PyObject *args, PyObject *kwargs) {
-    PyArrayObject *X_in, *y_in;
-    PyArrayObject *X_train, *X_test, *y_train, *y_test;
-    double test_size = 0.33;
-    int random_state = 42;
+    PyObject *X_obj, *y_obj;
+    PyArrayObject *X_array, *y_array;
 
-    static char *kwlist[] = {"X", "y", "test_size", "random_state", NULL};
+    double test_size = 0.25;
+    long random_state = 42;
+    int shuffle = 1;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!|di", kwlist,
-                                     &PyArray_Type, &X_in,
-                                     &PyArray_Type, &y_in,
-                                     &test_size, &random_state)) {
+    static char *kwlist[] = {"X", "y", "test_size", "random_state", "shuffle", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO|dli", kwlist, &X_obj, &y_obj, &test_size, &random_state, &shuffle)) {
         return NULL;
     }
 
-    if (test_size <= 0.0 || test_size >= 1.0) {
-        PyErr_SetString(PyExc_ValueError, "test_size must be between 0.0 and 1.0 exclusive");
+    X_array = (PyArrayObject *)PyArray_FROM_OTF(X_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    y_array = (PyArrayObject *)PyArray_FROM_OTF(y_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+
+    if (X_array == NULL || y_array == NULL) {
+        Py_XDECREF(X_array);
+        Py_XDECREF(y_array);
         return NULL;
     }
 
-    if (PyArray_NDIM(X_in) != 2) {
-        PyErr_SetString(PyExc_ValueError, "X must be a 2-dimensional array");
-        return NULL;
-    }
+    int n_samples = PyArray_DIM(X_array, 0);
+    int n_features = PyArray_DIM(X_array, 1);
+    int n_train, n_test;
 
-    if (PyArray_NDIM(y_in) != 1) {
-        PyErr_SetString(PyExc_ValueError, "y must be a 1-dimensional array");
-        return NULL;
-    }
+    n_train = (int)((1.0 - test_size) * n_samples);
+    n_test = n_samples - n_train;
 
-    npy_intp *dims_X = PyArray_DIMS(X_in);
-    npy_intp *dims_y = PyArray_DIMS(y_in);
-    npy_intp num_samples = dims_X[0];
-    npy_intp num_features = dims_X[1];
-    npy_intp num_labels = dims_y[0];
-
-    if (num_samples != num_labels) {
-        PyErr_SetString(PyExc_ValueError, "Number of samples in X and y must be equal");
-        return NULL;
-    }
-
-    npy_intp num_test = (npy_intp)(test_size * num_samples);
-    npy_intp num_train = num_samples - num_test;
-
-    // Allocate memory for X_train, X_test, y_train, y_test
-    npy_intp dims_train[2] = {num_train, num_features};
-    npy_intp dims_test[2] = {num_test, num_features};
-    npy_intp dims_y_train[1] = {num_train};
-    npy_intp dims_y_test[1] = {num_test};
-
-    X_train = (PyArrayObject*)PyArray_SimpleNew(2, dims_train, PyArray_TYPE(X_in));
-    X_test = (PyArrayObject*)PyArray_SimpleNew(2, dims_test, PyArray_TYPE(X_in));
-    y_train = (PyArrayObject*)PyArray_SimpleNew(1, dims_y_train, PyArray_TYPE(y_in));
-    y_test = (PyArrayObject*)PyArray_SimpleNew(1, dims_y_test, PyArray_TYPE(y_in));
-
-    // Initialize random number generator
-    srand(random_state);
-
-    // Allocate memory for shuffled indices
-    size_t *indices = malloc(num_samples * sizeof(size_t));
-    if (indices == NULL) {
-        PyErr_NoMemory();
-        return NULL;
-    }
-
-    // Shuffle indices
-    for (size_t i = 0; i < num_samples; ++i) {
+    int* indices = (int*)malloc(n_samples * sizeof(int));
+    for (int i = 0; i < n_samples; i++) {
         indices[i] = i;
     }
-    for (size_t i = 0; i < num_samples; ++i) {
-        size_t j = rand() % (i + 1);
-        size_t temp = indices[i];
-        indices[i] = indices[j];
-        indices[j] = temp;
+
+    if (shuffle) {
+        srand(random_state);
+        for (int i = n_samples - 1; i > 0; i--) {
+            int j = rand() % (i + 1);
+            int temp = indices[i];
+            indices[i] = indices[j];
+            indices[j] = temp;
+        }
     }
 
-    // Copy data
-    for (npy_intp i = 0; i < num_test; ++i) {
-        size_t index = indices[i];
-        memcpy(PyArray_GETPTR2(X_test, i, 0), PyArray_GETPTR2(X_in, index, 0), num_features * sizeof(double));
-        *((double*)PyArray_GETPTR1(y_test, i)) = *((double*)PyArray_GETPTR1(y_in, index));
+    npy_intp train_dims[2] = {n_train, n_features};
+    npy_intp test_dims[2] = {n_test, n_features};
+    npy_intp train_target_dims[1] = {n_train};
+    npy_intp test_target_dims[1] = {n_test};
+
+    PyArrayObject* X_train = (PyArrayObject*)PyArray_SimpleNew(2, train_dims, NPY_DOUBLE);
+    PyArrayObject* X_test = (PyArrayObject*)PyArray_SimpleNew(2, test_dims, NPY_DOUBLE);
+    PyArrayObject* y_train = (PyArrayObject*)PyArray_SimpleNew(1, train_target_dims, NPY_DOUBLE);
+    PyArrayObject* y_test = (PyArrayObject*)PyArray_SimpleNew(1, test_target_dims, NPY_DOUBLE);
+
+
+    for (int i = 0; i < n_train; i++) {
+        for (int j = 0; j < n_features; j++) {
+            *(double*)PyArray_GETPTR2(X_train, i, j) = *(double*)PyArray_GETPTR2(X_array, indices[i], j);
+        }
+        *(double*)PyArray_GETPTR1(y_train, i) = *(double*)PyArray_GETPTR1(y_array, indices[i]);
     }
 
-    for (npy_intp i = num_test; i < num_samples; ++i) {
-        size_t index = indices[i];
-        memcpy(PyArray_GETPTR2(X_train, i - num_test, 0), PyArray_GETPTR2(X_in, index, 0), num_features * sizeof(double));
-        *((double*)PyArray_GETPTR1(y_train, i - num_test)) = *((double*)PyArray_GETPTR1(y_in, index));
+    for (int i = 0; i < n_test; i++) {
+        for (int j = 0; j < n_features; j++) {
+            *(double*)PyArray_GETPTR2(X_test, i, j) = *(double*)PyArray_GETPTR2(X_array, indices[n_train + i], j);
+        }
+        *(double*)PyArray_GETPTR1(y_test, i) = *(double*)PyArray_GETPTR1(y_array, indices[n_train + i]);
     }
 
-    // Free memory for shuffled indices
     free(indices);
 
-    return Py_BuildValue("(OOOO)", X_train, X_test, y_train, y_test);
+    PyObject* result = PyTuple_Pack(4, X_train, X_test, y_train, y_test);
+
+    Py_XDECREF(X_array);
+    Py_XDECREF(y_array);
+
+    return result;
 }

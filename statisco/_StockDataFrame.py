@@ -3,7 +3,7 @@ import yfinance as yf
 import numpy as np
 from .preprocessing.normalization import MinMaxScaler
 from .statistics import closingReturns
-
+from .indicators.MAs import SMA
 
 from contextlib import redirect_stdout
 import io
@@ -27,9 +27,11 @@ class StockDataFrame(pandas.DataFrame):
             downloaded_data = self.download(ticker, **kwargs)
         super(StockDataFrame, self).__init__(downloaded_data, *args)
 
-    def calculate(self, close_returns=False):
+    def calculate(self, close_returns=False, sma=True, interval=3):
         if close_returns:
             self["CloseReturns"] = closingReturns(self["Adj Close"])
+        if sma:
+            self["SMA"] = SMA(self["Close"], interval)
         return
 
     def download(self, ticker, start=None, end=None, interval="1d", *args, **kwargs):
