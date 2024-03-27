@@ -1,5 +1,7 @@
 from tinygrad.tensor import Tensor
 from tinygrad import nn
+from tinygrad import dtypes
+import math
 
 class GRUCell:
   def __init__(self, input_size, hidden_size, dropout, c_type):

@@ -1,4 +1,9 @@
-from tinygrad import Tensor
+from tinygrad.tensor import Tensor
+from tinygrad.engine.jit import TinyJit
+from tinygrad import nn
+
+import numpy as np
+
 from ..tinygrad.GRU import GRUCell, GRUModel
 from ..tinygrad.loss import MSELoss 
 from ..preprocessing.normalization import MinMaxScaler
@@ -16,13 +21,13 @@ def create_dataset(dataset, lookback):
 class GRU:
     def __init__(self, lookback=4):
         self.model = GRUModel()
-        self.optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=0.001)
+        self.optimizer = nn.optim.Adam(nn.state.get_parameters(self.model), lr=0.001)
         self.lookback = lookback
-    def train(self, df, column_name):
+    def train(self, df, column_name, n_epochs=2000, batch_size=8):
         timeseries = df[[column_name]].values.astype("float32")
-        scaler = MinMaxScaler()
-        scaler.fit(timeseries)
-        timeseries = scaler.transform(timeseries)
+        # scaler = MinMaxScaler()
+        # scaler.fit(timeseries)
+        # timeseries = scaler.transform(timeseries)
         train_size = int(len(timeseries)*0.67)
         test_size = len(timeseries) - train_size
         train, test = timeseries[:train_size], timeseries[train_size:]
@@ -32,7 +37,7 @@ class GRU:
 
 
         @TinyJit
-        def train_step(X_batch, y_batch, n_epochs=2000, batch_size=8):
+        def train_step(X_batch, y_batch):
           with Tensor.train():
             self.optimizer.zero_grad()
             preds = self.model(X_batch)
