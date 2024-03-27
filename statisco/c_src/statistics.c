@@ -235,6 +235,72 @@ PyObject *correlation(PyObject *self, PyObject *args) {
     return Py_BuildValue("d", xyCovar_t / (sqrt(xVar_t) * sqrt(yVar_t)));
 }
 
+PyObject *correlation_matrix(PyObject *self, PyObject *args)
+{
+    PyObject *input_obj;
+    PyArrayObject *input_array;
+    int n, m;
+
+    // Parse the input arguments
+    if (!PyArg_ParseTuple(args, "O", &input_obj)) {
+        return NULL;
+    }
+
+    // Convert the input object to a NumPy array
+    input_array = (PyArrayObject*)PyArray_FROM_OTF(input_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (input_array == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Input must be a NumPy array of type float64.");
+        return NULL;
+    }
+
+    // Check if the input array is a 2D array
+    if (PyArray_NDIM(input_array) != 2) {
+        Py_DECREF(input_array);
+        PyErr_SetString(PyExc_ValueError, "Input array must be 2-dimensional");
+        return NULL;
+    }
+
+    // Get the dimensions of the input array
+    n = (int)PyArray_DIM(input_array, 0);
+    m = (int)PyArray_DIM(input_array, 1);
+
+    // Allocate memory for the correlation matrix
+    npy_intp dims[2] = {m, m};
+    PyArrayObject* result_array = (PyArrayObject*)PyArray_SimpleNew(2, dims, NPY_DOUBLE);
+    if (result_array == NULL) {
+        Py_DECREF(input_array);
+        return NULL;
+    }
+
+    // Get pointers to the data of input and result arrays
+    double* input_data = (double*)PyArray_DATA(input_array);
+    double* result_data = (double*)PyArray_DATA(result_array);
+
+
+  // Calculate the correlation matrix
+  for (int i = 0; i < m; ++i) {
+      for (int j = 0; j < m; ++j) {
+          double sum_xy = 0.0, sum_x = 0.0, sum_y = 0.0, sum_x2 = 0.0, sum_y2 = 0.0;
+          for (int k = 0; k < n; ++k) {
+              double x = input_data[k * m + i];
+              double y = input_data[k * m + j];
+              sum_xy += x * y;
+              sum_x += x;
+              sum_y += y;
+              sum_x2 += x * x;
+              sum_y2 += y * y;
+          }
+          double corr = (n * sum_xy - sum_x * sum_y) / sqrt((n * sum_x2 - sum_x * sum_x) * (n * sum_y2 - sum_y * sum_y));
+          result_data[i * m + j] = corr;
+      }
+  }
+
+  Py_DECREF(input_array);
+  return PyArray_Return(result_array);
+
+
+}
+
 PyMethodDef methods[] = {
   {"closingReturns",        (PyCFunction)closingReturns,          METH_VARARGS, "Computes the return column from dataframe."},
   {"mean",                  (PyCFunction)mean,                    METH_VARARGS, "Computes the mean/average."},
@@ -242,6 +308,7 @@ PyMethodDef methods[] = {
   {"stdDev",                (PyCFunction)stdDev,                  METH_VARARGS, "Computes the standard deviation based on the average returns."},
   {"covariance",            (PyCFunction)covariance,              METH_VARARGS, "Computes the covariance."},
   {"correlation",           (PyCFunction)correlation,             METH_VARARGS, "Computes the correlation."},
+  {"correlation_matrix",    (PyCFunction)correlation_matrix,      METH_VARARGS, "Computes the correlation matrix."},
   {NULL, NULL, 0, NULL}
 };
 
@@ -256,6 +323,5 @@ PyModuleDef statistics = {
 PyMODINIT_FUNC PyInit_statistics() {
   import_array(); // init numpy
   PyObject *module = PyModule_Create(&statistics);
-  printf("Imported statistics module\n");
   return module;
 }
