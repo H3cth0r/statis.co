@@ -3,7 +3,9 @@ import yfinance as yf
 import numpy as np
 from .preprocessing.normalization import MinMaxScaler
 from .statistics import closingReturns
-from .indicators.MAs import SMA
+from .indicators.MAs import SMA, EMA, WMA
+from .indicators.ATRs import ATR
+
 
 from contextlib import redirect_stdout
 import io
@@ -27,11 +29,17 @@ class StockDataFrame(pandas.DataFrame):
             downloaded_data = self.download(ticker, **kwargs)
         super(StockDataFrame, self).__init__(downloaded_data, *args)
 
-    def calculate(self, close_returns=False, sma=True, interval=3):
+    def calculate(self, close_returns=False, sma=False, ema=False, wma=False, atr=False, interval=3, smooth=2):
         if close_returns:
             self["CloseReturns"] = closingReturns(self["Adj Close"])
         if sma:
             self["SMA"] = SMA(self["Close"], interval)
+        if ema:
+            self["EMA"] = EMA(self["Close"], SMA(self["Close"], interval), smooth, interval)
+        if wma:
+            self["WMA"] = WMA(self["Close"], interval)
+        if atr: 
+            self["ATR"] = ATR(self["Close"], self["High"], self["Low"], interval)
         return
 
     def download(self, ticker, start=None, end=None, interval="1d", *args, **kwargs):
