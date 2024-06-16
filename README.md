@@ -28,11 +28,7 @@ pip install statisco
 From source:
 ```
 python setup.py sdist bdist_wheel
-```
-
-## To develop and Test from the source
-```
-python3 statisco/c_src/setup.py build_ext --inplace
+pip install .
 ```
 If you'd like to contribute, please contact me via GitHub.
 
