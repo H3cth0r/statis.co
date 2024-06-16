@@ -40,6 +40,6 @@ class GRUModel:
       for i in range(self.n_cells): hts[i] = self.gru_cells[i](outputs[-1] if i == 0 else hts[i-1], hts[i])
       output = self.fc(hts[-1])
       outputs.append(output)
-    outputs = Tensor.stack(outputs, dim=1)
+    outputs = Tensor.stack(*outputs, dim=1)
     outputs = outputs.squeeze(2)
     return outputs
