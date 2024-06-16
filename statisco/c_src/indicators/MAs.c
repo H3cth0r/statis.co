@@ -202,11 +202,150 @@ PyObject *WMA(PyObject *self, PyObject *args) {
     return result;
 }
 
+PyObject *MACD(PyObject *self, PyObject * args){
+    PyObject *Close_t;
+    npy_int32 short_window_t;
+    npy_int32 long_window_t;
+    npy_int32 signal_window_t;
+
+    if (!PyArg_ParseTuple(args, "Oiii", &Close_t, &short_window_t, &long_window_t, &signal_window_t) || PyErr_Occurred()) {
+        PyErr_SetString(PyExc_TypeError, "Invalid arguments. Expected Numpy array and three integers");
+        return NULL;
+    }
+
+    if (short_window_t <= 0 || long_window_t <= 0 || signal_window_t <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Invalid arguments. Expected Numpy array and three positive integers");
+        return NULL;
+    }
+
+    PyArrayObject *close_arr = (PyArrayObject *)PyArray_FROM_OTF(Close_t, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (close_arr == NULL) {
+        return NULL;
+    }
+
+    double *close_data = (double *)PyArray_DATA(close_arr);
+    npy_intp size = PyArray_SIZE(close_arr);
+
+    // Calculate short term SMA for the initial EMA calculation
+    PyObject *args_short_sma = Py_BuildValue("(Oi)", Close_t, short_window_t);
+    PyArrayObject *short_sma_arr = (PyArrayObject *)SMA(self, args_short_sma);
+    Py_DECREF(args_short_sma);
+    if (short_sma_arr == NULL) {
+        Py_DECREF(close_arr);
+        return NULL;
+    }
+
+    // Calculate short term EMA
+    PyObject *args_short_ema = Py_BuildValue("(OOid)", Close_t, short_sma_arr, short_window_t, 2.0 / (short_window_t + 1));
+    PyArrayObject *short_ema_arr = (PyArrayObject *)EMA(self, args_short_ema);
+    Py_DECREF(args_short_ema);
+    Py_DECREF(short_sma_arr);
+    if (short_ema_arr == NULL) {
+        Py_DECREF(close_arr);
+        return NULL;
+    }
+
+    // Calculate long term SMA for the initial EMA calculation
+    PyObject *args_long_sma = Py_BuildValue("(Oi)", Close_t, long_window_t);
+    PyArrayObject *long_sma_arr = (PyArrayObject *)SMA(self, args_long_sma);
+    Py_DECREF(args_long_sma);
+    if (long_sma_arr == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        return NULL;
+    }
+
+    // Calculate long term EMA
+    PyObject *args_long_ema = Py_BuildValue("(OOid)", Close_t, long_sma_arr, long_window_t, 2.0 / (long_window_t + 1));
+    PyArrayObject *long_ema_arr = (PyArrayObject *)EMA(self, args_long_ema);
+    Py_DECREF(args_long_ema);
+    Py_DECREF(long_sma_arr);
+    if (long_ema_arr == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        return NULL;
+    }
+
+    // Calculate MACD
+    PyObject *macd_result = PyArray_NewLikeArray(close_arr, NPY_CORDER, NULL, 0);
+    if (macd_result == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        Py_DECREF(long_ema_arr);
+        return NULL;
+    }
+    double *macd_data = (double *)PyArray_DATA((PyArrayObject *)macd_result);
+
+    for (npy_intp i = 0; i < size; i++) {
+        macd_data[i] = ((double *)PyArray_GETPTR1(short_ema_arr, i))[0] - ((double *)PyArray_GETPTR1(long_ema_arr, i))[0];
+    }
+
+    // Calculate Signal line SMA for the initial EMA calculation
+    PyObject *args_signal_sma = Py_BuildValue("(Oi)", macd_result, signal_window_t);
+    PyArrayObject *signal_sma_arr = (PyArrayObject *)SMA(self, args_signal_sma);
+    Py_DECREF(args_signal_sma);
+    if (signal_sma_arr == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        Py_DECREF(long_ema_arr);
+        Py_DECREF(macd_result);
+        return NULL;
+    }
+
+    // Calculate Signal line EMA
+    PyObject *args_signal_ema = Py_BuildValue("(OOid)", macd_result, signal_sma_arr, signal_window_t, 2.0 / (signal_window_t + 1));
+    PyArrayObject *signal_ema_arr = (PyArrayObject *)EMA(self, args_signal_ema);
+    Py_DECREF(args_signal_ema);
+    Py_DECREF(signal_sma_arr);
+    if (signal_ema_arr == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        Py_DECREF(long_ema_arr);
+        Py_DECREF(macd_result);
+        return NULL;
+    }
+
+    // Calculate MACD Histogram
+    PyObject *histogram_result = PyArray_NewLikeArray(close_arr, NPY_CORDER, NULL, 0);
+    if (histogram_result == NULL) {
+        Py_DECREF(close_arr);
+        Py_DECREF(short_ema_arr);
+        Py_DECREF(long_ema_arr);
+        Py_DECREF(macd_result);
+        Py_DECREF(signal_ema_arr);
+        return NULL;
+    }
+    double *histogram_data = (double *)PyArray_DATA((PyArrayObject *)histogram_result);
+
+    for (npy_intp i = 0; i < size; i++) {
+        histogram_data[i] = macd_data[i] - ((double *)PyArray_GETPTR1(signal_ema_arr, i))[0];
+    }
+
+    // Build the result tuple
+    PyObject *result = PyTuple_New(3);
+    PyTuple_SetItem(result, 0, macd_result);
+    PyTuple_SetItem(result, 1, (PyObject *)signal_ema_arr);
+    PyTuple_SetItem(result, 2, histogram_result);
+
+    // Clean up
+    Py_DECREF(close_arr);
+    Py_DECREF(short_ema_arr);
+    Py_DECREF(long_ema_arr);
+
+    if (PyErr_Occurred()) {
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    return result;
+}
+
 
 PyMethodDef methods[] = {
   {"SMA",        (PyCFunction)SMA,          METH_VARARGS, "Computes the Simple Moving Average."},
   {"EMA",        (PyCFunction)EMA,          METH_VARARGS, "Computes the Exponential Moving Average."},
   {"WMA",        (PyCFunction)WMA,          METH_VARARGS, "Computes the Weighted Moving Average."},
+  {"MACD",       (PyCFunction)MACD,         METH_VARARGS, "Computes the MACD, Signal Line and Histogram."},
   {NULL, NULL, 0, NULL}
 };
 
