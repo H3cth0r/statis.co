@@ -3,7 +3,7 @@ import yfinance as yf
 import numpy as np
 from .preprocessing.normalization import MinMaxScaler
 from .statistics import closingReturns
-from .indicators.MAs import SMA, EMA, WMA
+from .indicators.MAs import SMA, EMA, WMA, MACD
 from .indicators.ATRs import ATR
 
 
@@ -40,6 +40,10 @@ class StockDataFrame(pandas.DataFrame):
             self["WMA"] = WMA(self["Close"], interval)
         if atr: 
             self["ATR"] = ATR(self["Close"], self["High"], self["Low"], interval)
+        return
+    
+    def calculate_MACD(self, short_window=12, long_window=26, signal_window=9):
+        self["MACD"], self["MACD_SignalLine"], self["MACD_Histogram"] = MACD(self["Close"], short_window, long_window, signal_window)
         return
 
     def download(self, ticker, start=None, end=None, interval="1d", *args, **kwargs):
