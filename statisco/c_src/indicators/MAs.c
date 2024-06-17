@@ -202,7 +202,15 @@ PyObject *WMA(PyObject *self, PyObject *args) {
     return result;
 }
 
-PyObject *MACD(PyObject *self, PyObject * args){
+void calculate_ema(double *data, double *ema, int length, int window) {
+    double alpha = 2.0 / (window + 1);
+    ema[0] = data[0];
+    for (int i = 1; i < length; i++) {
+        ema[i] = alpha * data[i] + (1 - alpha) * ema[i - 1];
+    }
+}
+
+PyObject *MACD(PyObject *self, PyObject *args) {
     PyObject *Close_t;
     npy_int32 short_window_t;
     npy_int32 long_window_t;
@@ -213,7 +221,7 @@ PyObject *MACD(PyObject *self, PyObject * args){
         return NULL;
     }
     if (short_window_t <= 0 || long_window_t <= 0 || signal_window_t <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Window sizes must be positive integers.");
+        PyErr_SetString(PyExc_ValueError, "Window lengths must be positive integers");
         return NULL;
     }
 
@@ -222,100 +230,55 @@ PyObject *MACD(PyObject *self, PyObject * args){
         return NULL;
     }
 
-    // Calculate SMA for the long window
-    PyObject *SMA_long = SMA(self, Py_BuildValue("Oi", close_arr, long_window_t));
-    if (SMA_long == NULL) {
-        Py_XDECREF(close_arr);
+    npy_intp length = PyArray_DIM(close_arr, 0);
+    double *close_data = (double *)PyArray_DATA(close_arr);
+
+    double *ema_short = (double *)malloc(length * sizeof(double));
+    double *ema_long = (double *)malloc(length * sizeof(double));
+    double *macd = (double *)malloc(length * sizeof(double));
+    double *signal_line = (double *)malloc(length * sizeof(double));
+    double *histogram = (double *)malloc(length * sizeof(double));
+
+    if (!ema_short || !ema_long || !macd || !signal_line || !histogram) {
+        free(ema_short);
+        free(ema_long);
+        free(macd);
+        free(signal_line);
+        free(histogram);
+        Py_DECREF(close_arr);
+        PyErr_SetString(PyExc_MemoryError, "Failed to allocate memory");
         return NULL;
     }
 
-    // Calculate EMA for the short and long windows
-    PyObject *EMA_short = EMA(self, Py_BuildValue("OOid", close_arr, SMA_long, short_window_t, 2.0));
-    PyObject *EMA_long = EMA(self, Py_BuildValue("OOid", close_arr, SMA_long, long_window_t, 2.0));
-    Py_XDECREF(SMA_long);
-    if (EMA_short == NULL || EMA_long == NULL) {
-        Py_XDECREF(close_arr);
-        Py_XDECREF(EMA_short);
-        Py_XDECREF(EMA_long);
-        return NULL;
+    calculate_ema(close_data, ema_short, length, short_window_t);
+    calculate_ema(close_data, ema_long, length, long_window_t);
+
+    for (int i = 0; i < length; i++) {
+        macd[i] = ema_short[i] - ema_long[i];
     }
 
-    npy_intp size = PyArray_SIZE(close_arr);
-    PyObject *result = PyTuple_New(3);
-    if (result == NULL) {
-        Py_XDECREF(close_arr);
-        Py_XDECREF(EMA_short);
-        Py_XDECREF(EMA_long);
-        return NULL;
+    calculate_ema(macd, signal_line, length, signal_window_t);
+
+    for (int i = 0; i < length; i++) {
+        histogram[i] = macd[i] - signal_line[i];
     }
 
-    // Create arrays for MACD, Signal Line, and MACD Histogram
-    PyObject *MACD_line = PyArray_NewLikeArray((PyArrayObject *)EMA_short, NPY_CORDER, NULL, 0);
-    PyObject *Signal_line = PyArray_NewLikeArray((PyArrayObject *)EMA_short, NPY_CORDER, NULL, 0);
-    PyObject *MACD_Histogram = PyArray_NewLikeArray((PyArrayObject *)EMA_short, NPY_CORDER, NULL, 0);
+    npy_intp dims[1] = { length };
+    PyObject *macd_arr = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, macd);
+    PyObject *signal_arr = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, signal_line);
+    PyObject *hist_arr = PyArray_SimpleNewFromData(1, dims, NPY_DOUBLE, histogram);
 
-    if (MACD_line == NULL || Signal_line == NULL || MACD_Histogram == NULL) {
-        Py_XDECREF(close_arr);
-        Py_XDECREF(EMA_short);
-        Py_XDECREF(EMA_long);
-        Py_XDECREF(MACD_line);
-        Py_XDECREF(Signal_line);
-        Py_XDECREF(MACD_Histogram);
-        return NULL;
-    }
-
-    double *data_short = (double *)PyArray_DATA((PyArrayObject *)EMA_short);
-    double *data_long = (double *)PyArray_DATA((PyArrayObject *)EMA_long);
-    double *macd_data = (double *)PyArray_DATA((PyArrayObject *)MACD_line);
-    double *signal_data = (double *)PyArray_DATA((PyArrayObject *)Signal_line);
-    double *hist_data = (double *)PyArray_DATA((PyArrayObject *)MACD_Histogram);
-
-    // Calculate MACD line
-    for (npy_intp i = 0; i < size; i++) {
-        macd_data[i] = data_short[i] - data_long[i];
-    }
-
-    // Calculate Signal line (EMA of MACD line)
-    PyObject *SMA_macd = SMA(self, Py_BuildValue("Oi", MACD_line, signal_window_t));
-    if (SMA_macd == NULL) {
-        Py_XDECREF(close_arr);
-        Py_XDECREF(EMA_short);
-        Py_XDECREF(EMA_long);
-        Py_XDECREF(MACD_line);
-        Py_XDECREF(Signal_line);
-        Py_XDECREF(MACD_Histogram);
-        return NULL;
-    }
-    PyObject *EMA_signal = EMA(self, Py_BuildValue("OOid", MACD_line, SMA_macd, signal_window_t, 2.0));
-    Py_XDECREF(SMA_macd);
-    if (EMA_signal == NULL) {
-        Py_XDECREF(close_arr);
-        Py_XDECREF(EMA_short);
-        Py_XDECREF(EMA_long);
-        Py_XDECREF(MACD_line);
-        Py_XDECREF(Signal_line);
-        Py_XDECREF(MACD_Histogram);
-        return NULL;
-    }
-
-    double *signal_line_data = (double *)PyArray_DATA((PyArrayObject *)EMA_signal);
-    for (npy_intp i = 0; i < size; i++) {
-        signal_data[i] = signal_line_data[i];
-        hist_data[i] = macd_data[i] - signal_data[i];
-    }
-
-    PyTuple_SET_ITEM(result, 0, MACD_line);
-    PyTuple_SET_ITEM(result, 1, Signal_line);
-    PyTuple_SET_ITEM(result, 2, MACD_Histogram);
-
-    Py_XDECREF(close_arr);
-    Py_XDECREF(EMA_short);
-    Py_XDECREF(EMA_long);
-    Py_XDECREF(EMA_signal);
+    Py_DECREF(close_arr);
+    free(ema_short);
+    free(ema_long);
+    
+    PyObject *result = PyTuple_Pack(3, macd_arr, signal_arr, hist_arr);
+    Py_DECREF(macd_arr);
+    Py_DECREF(signal_arr);
+    Py_DECREF(hist_arr);
 
     return result;
 }
-
 
 PyMethodDef methods[] = {
   {"SMA",        (PyCFunction)SMA,          METH_VARARGS, "Computes the Simple Moving Average."},
