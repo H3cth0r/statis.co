@@ -41,7 +41,6 @@ class StockDataFrame(pandas.DataFrame):
         if atr: 
             self["ATR"] = ATR(self["Close"], self["High"], self["Low"], interval)
         return
-    
     def calculate_MACD(self, short_window=12, long_window=26, signal_window=9):
         self["MACD"], self["MACD_SignalLine"], self["MACD_Histogram"] = MACD(self["Close"], short_window, long_window, signal_window)
         return
@@ -60,15 +59,24 @@ class StockDataFrame(pandas.DataFrame):
     def update(self):
         pass
 
-    def normalize(self, inplace=False):
-        data            = self.copy().to_numpy()
-        data.astype(np.double)
-        self.min_max_scaler  = MinMaxScaler()
-        self.min_max_scaler.fit(data)
-        if inplace: 
-            self[:] = self.min_max_scaler.transform(data)
-        else:
-            return self.min_max_scaler.transform(data)
+    def normalize(self, fit=True, transform=True, inplace=False, data=None):
+        """
+        Method for applying min max normalziation to the dataframe.
+        This will store the fitted model, for new data.
+        1. First fit .
+        2. Then transform.
+        """
+        if fit:
+            data            = self.copy().to_numpy()
+            data.astype(np.double)
+            self.min_max_scaler  = MinMaxScaler()
+            self.min_max_scaler.fit(data)
+        if transform:
+            if inplace: 
+                self[:] = self.min_max_scaler.transform(data)
+            else:
+                return self.min_max_scaler.transform(data)
+
 
     def indicators(self):
         pass
