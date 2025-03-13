@@ -1,5 +1,9 @@
 ![logo](https://github.com/H3cth0r/statis.co/blob/main/resources/logo.png)
 
+## INFO
+`statis.co` will be going through a deep refactoring, given the development of `wrapc.co`. `wrapc.co` will streamline the implementation fo the python C extensions.
+Checkout [wrapc.co](https://github.com/H3cth0r/wrapc.co).
+
 ## What is Statis.Co?
 [Statis.Co](https://github.com/H3cth0r/statis.co) is a Python module encompassing diverse financial tools and functionalities, 
 including indicators, statistical calculations, and connections to data sources. 
