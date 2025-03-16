@@ -1,6 +1,6 @@
 ![logo](https://github.com/H3cth0r/statis.co/blob/main/resources/logo.png)
 
-## INFO
+## !!! IMPORTART !!!
 `statis.co` will be going through a deep refactoring, given the development of `wrapc.co`. `wrapc.co` will streamline the implementation fo the python C extensions.
 Checkout [wrapc.co](https://github.com/H3cth0r/wrapc.co).
 
