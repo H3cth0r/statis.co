@@ -34,9 +34,9 @@ PyObject *SMA(PyObject *self, PyObject *args) {
     }
     double *result_data = (double *)PyArray_DATA((PyArrayObject *)result);
 
-    // Modify the input array directly
     if (size > 1000) {
-        #pragma omp parallel for reduction(+:data[i])
+        // CORRECTED: Removed the invalid reduction clause
+        #pragma omp parallel for
         for (int i = window_t - 1; i < size; i++) {
             double sum = 0;
             int valid_count = 0;
@@ -120,24 +120,16 @@ PyObject *EMA(PyObject *self, PyObject *args) {
     double *result_data = (double *)PyArray_DATA((PyArrayObject *)result);
 
     double alpha = smooth / (window_t + 1);
-    double ema_prev = data_sma[window_t - 1];  // Initialize with SMA[window_t - 1] for the first EMA value
+    double ema_prev = data_sma[window_t - 1];
     double ema;
 
-    if (size > 1000) {
-        #pragma omp parallel for private(ema, ema_prev) 
-        for (npy_intp i = window_t - 1; i < size; i++) {
-            ema = alpha * data[i] + (1 - alpha) * ema_prev;
-            ema_prev = ema;
-            result_data[i] = ema;
-        }
-    } else {
-        for (npy_intp i = window_t - 1; i < size; i++) {
-            ema = alpha * data[i] + (1 - alpha) * ema_prev;
-            ema_prev = ema;
-            result_data[i] = ema;
-        }
+    // CORRECTED: Removed pragma because EMA is sequential
+    for (npy_intp i = window_t - 1; i < size; i++) {
+        ema = alpha * data[i] + (1 - alpha) * ema_prev;
+        ema_prev = ema;
+        result_data[i] = ema;
     }
-
+    
     if (PyErr_Occurred()) {
         Py_DECREF(arr);
         Py_DECREF(arr_sma);

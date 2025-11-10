@@ -51,11 +51,17 @@ class StockDataFrame(pandas.DataFrame):
             'tickers': ticker,
             'start': start,
             'end': end,
-            'interval': interval
+            'interval': interval,
+            'auto_adjust': False,
+            'progress': False
         }
         param_dict.update(kwargs)
-        donwloaded, _ = run_function_silently(lambda: yf.download(**param_dict))
-        return donwloaded
+        downloaded, _ = run_function_silently(lambda: yf.download(**param_dict))
+
+        if isinstance(downloaded.columns, pandas.MultiIndex):
+            downloaded.columns = downloaded.columns.droplevel(1)
+        return downloaded
+
     def update(self):
         pass
 

@@ -1,6 +1,36 @@
 from setuptools import setup, Extension
 import setuptools
 import numpy as np
+import sys
+import os
+
+extra_compile_args = []
+extra_link_args = []
+include_dirs_omp = []
+
+if sys.platform == 'darwin':
+    homebrew_prefix = "/opt/homebrew" if os.path.exists("/opt/homebrew") else "/usr/local"
+    omp_include_path = os.path.join(homebrew_prefix, 'opt', 'libomp', 'include')
+    omp_lib_path = os.path.join(homebrew_prefix, 'opt', 'libomp', 'lib')
+
+    if os.path.exists(omp_include_path):
+        extra_compile_args = ['-Xpreprocessor', '-fopenmp']
+        extra_link_args = [f'-L{omp_lib_path}', '-lomp']
+        include_dirs_omp = [omp_include_path]
+    else:
+        print("Warning: libomp not found. Please install with 'brew install libomp'")
+elif sys.platform.startswith('linux'):
+    extra_compile_args = ['-fopenmp']
+    extra_link_args = ['-lgomp']
+
+def create_extension(name, c_file):
+    return Extension(
+        name,
+        [c_file],
+        include_dirs=[np.get_include()] + include_dirs_omp,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+    )
 
 def main():
     setup(
@@ -17,48 +47,12 @@ def main():
             "numpy>=1.26.2",
         ],
         ext_modules=[
-            Extension(
-                "statisco.statistics",
-                ["statisco/c_src/statistics.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-            ),
-            Extension(
-                "statisco.finance",
-                ["statisco/c_src/finance.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-            ),
-            Extension(
-                "statisco.indicators.MAs",
-                ["statisco/c_src/indicators/MAs.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-                ),
-            Extension(
-                "statisco.indicators.ATRs",
-                ["statisco/c_src/indicators/ATRs.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-            ),
-            Extension(
-                "statisco.preprocessing.normalization",
-                ["statisco/c_src/preprocessing/normalization.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-            ),
-            Extension(
-                "statisco.utils",
-                ["statisco/c_src/utils.c"],
-                include_dirs=[np.get_include()],
-                # extra_compile_args=['-fopenmp'],
-                extra_link_args=['-lgomp'],
-            ),
+            create_extension("statisco.statistics", "statisco/c_src/statistics.c"),
+            create_extension("statisco.finance", "statisco/c_src/finance.c"),
+            create_extension("statisco.indicators.MAs", "statisco/c_src/indicators/MAs.c"),
+            create_extension("statisco.indicators.ATRs", "statisco/c_src/indicators/ATRs.c"),
+            create_extension("statisco.preprocessing.normalization", "statisco/c_src/preprocessing/normalization.c"),
+            create_extension("statisco.utils", "statisco/c_src/utils.c"),
         ],
         zip_safe=False,
     )

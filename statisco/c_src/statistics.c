@@ -108,23 +108,13 @@ PyObject *variance(PyObject *self, PyObject *args){
     double diff;
 
     if(size > 1000){
-        #pragma omp parallel for private(diff) reduction(+:averageDiffSqd) 
+        #pragma omp parallel for private(diff) reduction(+:averageDiffSqd)
         for(npy_intp i = 0; i < size; i++) {
-            if (i >= size) {
-                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
-                Py_DECREF(arr);
-                return NULL;
-            }
             diff = data[i] - average_t;
             averageDiffSqd += diff * diff;
         }
     } else {
         for(npy_intp i = 0; i < size; i++) {
-            if (i >= size) {
-                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
-                Py_DECREF(arr);
-                return NULL;
-            }
             diff = data[i] - average_t;
             averageDiffSqd += diff * diff;
         }

@@ -34,10 +34,21 @@ From source:
 python setup.py sdist bdist_wheel
 pip install .
 ```
+
+### Editable Installation
+```
+pip install -e .
+```
+
 If you'd like to contribute, please contact me via GitHub.
 
 ## Requirements
 To compile the C extension, the primary requirements include the installation of Numpy and GCC.
+
+Also install llvm for `omp.h`:
+```
+brew install libomp
+```
 
 
 ## Usage
@@ -54,6 +65,12 @@ msft.head()
 For a more in-depth understanding of usage, refer to the detailed examples provided in the 
 [test notebook](https://github.com/H3cth0r/statis.co/blob/main/test.ipynb).
 We'll be working on developing a documentation site.
+
+## Examples
+Visit this repo for further examples:
+```
+https://github.com/H3cth0r/statis.co-samples
+```
 
 ## TODO
 This is what I’ll be working on:
