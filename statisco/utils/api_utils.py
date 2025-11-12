@@ -25,3 +25,9 @@ def cache_response(func):
 
         return response
     return wrapper
+
+def create_standalone_endpoint():
+    pass
+
+def add_all_standalone_endpoints():
+    pass
